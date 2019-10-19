@@ -1,0 +1,48 @@
+#!/bin/sh
+
+PATHS_TO_BACKUP=$@
+
+# Some helpers and error handling
+info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
+trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
+
+info "Starting borg backup"
+
+borg create                       \
+     --stats                      \
+     --show-version               \
+     --show-rc                    \
+     --filter AME                 \
+     --list                       \
+                                  \
+     ::'{now:%Y-%m-%dT%H:%M:%S}'  \
+     PATHS_TO_BACKUP              \
+
+backup_exit=$?
+
+info "Pruning repository"
+
+borg prune             \
+    --list             \
+    --show-rc          \
+    --keep-daily    14 \
+    --keep-weekly   4  \
+    --keep-monthly  12 \
+    --keep-yearly   5  \
+
+prune_exit=$?
+
+# use highest exit code as global exit code
+global_exit=$(( backup_exit > prune_exit ? backup_exit : prune_exit ))
+
+if [ ${global_exit} -eq 1 ];
+then
+    info "Backup and/or Prune finished with a warning"
+fi
+
+if [ ${global_exit} -gt 1 ];
+then
+    info "Backup and/or Prune finished with an error"
+fi
+
+exit ${global_exit}
