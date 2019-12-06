@@ -16,7 +16,7 @@ borg create                       \
      --list                       \
                                   \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
-     PATHS_TO_BACKUP              \
+     $PATHS_TO_BACKUP             \
 
 backup_exit=$?
 
