@@ -14,13 +14,16 @@ $ ls -l /usr/bin/borgbackup-job
 ```
 
 ### SSH keys
-Often, this script will be run by root in a cron job. If you have a remote repository, you often want to authenticate with SSH keys. Remember to do something like
+Often, this script will be run by root in a cron job. If you have a remote repository, you often want to authenticate with SSH keys.
+Remember to do something like root. You need a key without a passphrase to be able to run this automatically.
 ```
+# ssh-keygen -t rsa -b 4096
 # ssh-copy-id user-at-remote@remoteip.com
 ```
-And then, at the `authorized_keys` at `remoteip.com` for user `user-at-remote`, add something like this:
+And then, at the `authorized_keys` at `remoteip.com` for user `user-at-remote`, add something like this at the end.
+The path should of course be replaced by the real path to the borg repository.
 ```
-command="borg serve --restrict-to-path /path-to-repositories/",restrict
+command="borg serve --restrict-to-path /path-to-repository/",restrict
 ```
 
 ### Environment variables
