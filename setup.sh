@@ -54,8 +54,6 @@ configure_remote_backup () {
        "/home/${borg_remote_user}/.ssh/authorized_keys\"" \
        "on your remote host \"${borg_remote_host}\":"
   echo "command=\"borg serve --restrict-to-path ${borg_remote_backup_path}\",restrict"
-
-  prompt_for_continue
 }
 
 setup_job () {
