@@ -10,7 +10,7 @@ The script is originally from an example from borg [quickstart documentation](ht
 
 In borg, you can divide your backups into repositories. You can for instance have one
 backup per machine, or one backup per service. That's up to you. This script provides the
-shared parts for these backup scripts. You the need to provide the actual paths to backup
+shared parts for these backup scripts. You need to provide the actual paths to backup
 to this script.
 
 My setup looks something like this:
