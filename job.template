@@ -1,0 +1,15 @@
+!/bin/bash
+
+set -o errexit
+
+export BORG_PASSCOMMAND="cat /root/.borg-passphrase"
+
+echo 'Starting borg backup job'
+
+echo 'Stopping services that can alter data'
+# TODO: stop services
+
+borgbackup-job '/home/test/a-directory-to-backup' '/srv/test/another-directory-to-backup'
+
+echo 'Starting services again'
+# TODO: start servies
