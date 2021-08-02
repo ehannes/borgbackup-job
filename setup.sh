@@ -26,8 +26,7 @@ please_confirm () {
 }
 
 place-script-in-path () {
-	# sudo ln -s $JOB_PATH $BORG_EXECUTE_DIR
-  echo 'test'
+	sudo ln -s $JOB_PATH $BORG_EXECUTE_DIR
 }
 
 configure_remote_backup () {
@@ -62,7 +61,7 @@ setup_job () {
   read -p 'Name of the backup job to create: ' job_name
   passphrase_file_path="/home/${client_user_name}/.borg-passphrase-${job_name}"
 
-  read -p "Create ${passphrase_file_path}? [Y/n]"
+  read -p "Create ${passphrase_file_path}? [Y/n]" -n1
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     # umask 0377
     # touch $passphrase_file_path

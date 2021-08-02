@@ -1,8 +1,11 @@
 !/bin/bash
 
 set -o errexit
+REPOBASE="ssh://user@host:port/path/to/borgbackup"
+REPONAME=example-job
 
-export BORG_PASSCOMMAND="cat /root/.borg-passphrase"
+export BORG_REPO="$REPOBASE"/"$REPONAME"
+export BORG_PASSCOMMAND="cat /root/.borg-passphrase-$REPONAME"
 
 echo 'Starting borg backup job'
 
