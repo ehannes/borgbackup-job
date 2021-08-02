@@ -4,7 +4,7 @@
 # CONSTRANTS 
 #############
 
-BORG_EXECUTE_DIR='/usr/bin/'
+BORG_EXECUTE_DIR='/usr/local/bin/'
 JOB_NAME='borgbackup-job'
 JOB_PATH="$PWD/$JOB_NAME"
 

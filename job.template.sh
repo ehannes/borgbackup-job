@@ -1,4 +1,11 @@
-!/bin/bash
+#!/bin/bash
+#example script for running backup from cron, for example:
+# /etc/cron.d/borgbackup:
+##
+## cron.d for borgbackup
+##
+#PATH=/usr/local/bin/:/usr/bin:/bin
+#30 03 * * * root /usr/local/bin/job.template.sh.sh
 
 set -o errexit
 REPOBASE="ssh://user@host:port/path/to/borgbackup"
