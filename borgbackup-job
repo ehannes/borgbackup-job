@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
 set -o errexit
 
-PATHS_TO_BACKUP="$@"
+PATHS_TO_BACKUP=("$@")
 
 # Some helpers and error handling
 info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
@@ -18,7 +18,7 @@ borg create                       \
      --list                       \
                                   \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
-     "$PATHS_TO_BACKUP"
+     "${PATHS_TO_BACKUP[@]}"
 
 backup_exit=$?
 
