@@ -5,7 +5,7 @@
 ## cron.d for borgbackup
 ##
 #PATH=/usr/local/bin/:/usr/bin:/bin
-#30 03 * * * root /usr/local/bin/job.template.bash.sh
+#30 03 * * * root /usr/local/bin/job.template.bash
 
 set -o errexit
 REPOBASE="ssh://user@host:port/path/to/borgbackup"
