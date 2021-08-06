@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############
-# CONSTRANTS 
+# CONSTRANTS
 #############
 
 BORG_EXECUTE_DIR='/usr/local/bin/'
