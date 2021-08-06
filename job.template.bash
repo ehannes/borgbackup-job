@@ -25,5 +25,9 @@ echo 'Stopping services that can alter data'
 
 borgbackup-job "${TO_BACKUP[@]}"
 
-echo 'Starting services again'
-# TODO: start servies
+function start_services_again {
+  echo 'Starting services again'
+  # TODO: start servies
+}
+# Ensure services are always started again, even on early exit
+trap start_services_again EXIT
