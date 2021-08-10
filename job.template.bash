@@ -8,15 +8,13 @@
 #30 03 * * * root /usr/local/bin/job.template.bash
 
 set -o errexit
-REPOBASE="ssh://user@host:port/path/to/borgbackup"
-REPONAME=example-job
 TO_BACKUP=(
   "/home/test/a-directory-to-backup"
   "/srv/test/another directory to backup"
   )
 
-export BORG_REPO="$REPOBASE"/"$REPONAME"
-export BORG_PASSCOMMAND="cat /root/.borg-passphrase-$REPONAME"
+#get repo name and auth details
+source $HOME/.borg-meron_music-env.bash
 
 function stop_services {
   echo 'Stopping services that can alter data'
