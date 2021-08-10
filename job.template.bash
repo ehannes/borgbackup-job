@@ -18,16 +18,21 @@ TO_BACKUP=(
 export BORG_REPO="$REPOBASE"/"$REPONAME"
 export BORG_PASSCOMMAND="cat /root/.borg-passphrase-$REPONAME"
 
-echo 'Starting borg backup job'
-
-echo 'Stopping services that can alter data'
-# TODO: stop services
-
-borgbackup-job "${TO_BACKUP[@]}"
+function stop_services {
+  echo 'Stopping services that can alter data'
+  # TODO: stop services
+}
 
 function start_services_again {
   echo 'Starting services again'
   # TODO: start servies
 }
+echo 'Starting borg backup job'
+
+stop_services
+
 # Ensure services are always started again, even on early exit
 trap start_services_again EXIT
+
+borgbackup-job "${TO_BACKUP[@]}"
+
