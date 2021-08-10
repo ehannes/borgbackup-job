@@ -1,0 +1,11 @@
+# source this file to access the repository on the command line with the 'borg' command,
+# for manual handling of backups.
+# it is also sourced by the backup job
+
+# change these for actual usage:
+REPOBASE="ssh://user@host:port/path/to/borgbackup"
+REPONAME=example-job
+
+# the BORG_* variables are input to the 'borg'-command
+export BORG_REPO="$REPOBASE"/"$REPONAME"
+export BORG_PASSCOMMAND="cat $HOME/.borg-$REPONAME-passphrase"
