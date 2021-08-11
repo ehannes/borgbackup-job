@@ -35,4 +35,3 @@ stop_services
 trap start_services_again EXIT
 
 borgbackup-job "${TO_BACKUP[@]}"
-
