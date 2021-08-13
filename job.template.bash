@@ -14,7 +14,7 @@ TO_BACKUP=(
   )
 
 #get repo name and auth details
-source $HOME/.borg-meron_music-env.bash
+source $HOME/.borg-reponame-env.bash
 
 function stop_services {
   echo 'Stopping services that can alter data'
