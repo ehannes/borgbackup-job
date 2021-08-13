@@ -1,72 +1,155 @@
 #!/bin/bash
 
 #############
-# CONSTRANTS
+# CONSTANTS
 #############
 
-BORG_EXECUTE_DIR='/usr/local/bin/'
-JOB_NAME='borgbackup-job'
-JOB_PATH="$PWD/$JOB_NAME"
+this_script=$(realpath $0)
 
-prompt_for_continue () {
-  read -p "Continue? [Y/n] " -n 1
-  echo # new line
-  if ! [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Ok, aborting"
-    exit
+BORG_EXECUTE_DIR='/usr/local/bin/'
+MAIN_SCRIPT='borgbackup-job'
+MAIN_PATH="$(dirname $this_script)"
+
+USER_BACKUP_CONFDIR="${HOME}/.borgbackup"
+
+die() {
+  local exitcode=$1
+  local msg="$2"
+  echo -e "$msg" >&2
+  exit $exitcode
+}
+
+read_Y_or_N()  {
+  local prompt="$1"
+  REPLY="x"
+  while [[ $REPLY != [YyNn] ]]; do
+    read -p "$prompt" -n 1
+    echo
+  done
+  if [[ $REPLY == [Yy] ]]; then
+    return 0
+  else
+    return 1
   fi
 }
 
-please_confirm () {
-  echo 'Warning: this script should only be run from within the project folder!'
-  echo 'Please start with reading the readme.'
-  echo 'This script will setup the generic borg backup job.'
+read_nonempty_pwd_with_prompt() {
+  local prompt="$1"
+  REPLY=""
+  while [[ -z $REPLY ]]; do
+    read -s -p "$prompt"
+    echo  >&2
+    [[ -z $REPLY ]] && echo "Empty string entered. Please try again"  >&2
+  done
+  echo $REPLY
+}
 
+prompt_for_continue()  {
+  if ! read_Y_or_N "Continue? [y/n] "; then
+    die 0 "Ok, aborting"
+  fi
+}
+
+please_confirm()  {
+  echo "Please start with reading the README.md (in folder $MAIN_PATH)."
+  echo "This script will setup the generic borg backup job."
+  echo "It can also initialize new borg backup jobs and associated repos."
+  echo
+  echo "NOTE: You're running as user \"$USER\"; this user needs read access to all file to backup, as it"
+  echo "will be the one running the backup."
   prompt_for_continue
 }
 
-place-script-in-path () {
-	sudo ln -s $JOB_PATH $BORG_EXECUTE_DIR
+place-script-in-path()  {
+  sudo ln -s $MAIN_PATH/$MAIN_SCRIPT $BORG_EXECUTE_DIR
 }
 
-configure_remote_backup () {
-  read -p 'Borg remote host to send backup to (for instance hemma.elvemyr.se): ' borg_remote_host
+configure_remote_backup()  {
+  read -e -p 'Borg remote host[:port] to send backup to (for instance hemma.elvemyr.se): ' borg_remote_host
+  IFS=: read borg_remote_host borg_remote_port <<<"$borg_remote_host"
 
-	read -p 'Remote user name: ' borg_remote_user
-  read -p 'Absolute path to backup directory on remote host (e.g. /srv/backups/): ' borg_remote_backup_path
+  read -e -p 'Remote user name: ' borg_remote_user
+  read -e -p 'Absolute path to backup directory on remote host (e.g. /srv/backups/): ' borg_remote_backup_path
 
-  echo 'Which user should be used on this machine (the client) for running the backup?'
-  echo 'Note that this user needs read access to all files to backup'
-  echo 'You can have multiple backup jobs run by different users.'
-
-  read -p 'Client user name: ' client_user_name
-  echo "\"$client_user_name\" needs SSH access to the remote host to be able to send over the backups."
+  echo "\"$USER\" needs SSH access to the remote host to be able to send over the backups."
   echo 'Please generate an SSH key and copy the id to the remote host.'
   echo "Something like this when logged in as ${client_user_name}:"
   echo '$ ssh-keygen -t rsa -b 4096'
   echo "$ ssh-copy-id ${borg_remote_user}@${borg_remote_host}"
   echo 'Then test the connection with something like:'
-  echo "$ ssh ${borg_remote_user}@${borg_remote_host}"
-  echo 'Keep in mind to add port number if you are not using standard port 22 for SSH.'
+  echo "$ ssh ${borg_remote_port:+"-p $borg_remote_port "}${borg_remote_user}@${borg_remote_host}"
+  #  echo 'Keep in mind to add port number if you are not using standard port 22 for SSH.'
 
-  echo "To lock down this access, we you should append something this to " \
-       "/home/${borg_remote_user}/.ssh/authorized_keys\"" \
-       "on your remote host \"${borg_remote_host}\":"
+  echo "To lock down the access with this key, you should append something like this to " \
+    "/home/${borg_remote_user}/.ssh/authorized_keys\"" \
+    "on your remote host \"${borg_remote_host}\":"
   echo "command=\"borg serve --restrict-to-path ${borg_remote_backup_path}\",restrict"
+
+  echo # new line
+  repobasefile="${USER_BACKUP_CONFDIR}/${borg_remote_host}-repobase"
+  mkdir -p "$USER_BACKUP_CONFDIR"
+
+  echo "Storing configuration for ${borg_remote_host} in file $repobasefile"
+  echo REPOBASE="\"ssh://${borg_remote_user}@${borg_remote_host}:${borg_remote_port:-22}$borg_remote_backup_path\"" \
+    >$repobasefile
 }
 
-setup_job () {
-  echo "We can create a password file in ${client_user_name}'s home directory."
+setup_job()  {
+  mkdir -p "${USER_BACKUP_CONFDIR}"
 
-  read -p 'Name of the backup job to create: ' job_name
-  passphrase_file_path="/home/${client_user_name}/.borg-passphrase-${job_name}"
+  declare -a repobase_files=( $(bash -c "cd ${USER_BACKUP_CONFDIR}; ls *-repobase") )
+  echo "Which repository config should be used to store the backup?"
+  PS3="Please select from list above: "
+  select repobase_file in ${repobase_files[*]} "Other"; do
+    if   [[ $repobase_file == "Other" ]]; then
+      die   0 "Please manually create a *-repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
+    elif   [[ -n $repobase_file ]]; then
+      source   ${USER_BACKUP_CONFDIR}/$repobase_file
+      break
+    else
+      die   1 "Invalid selection. Exiting"
+    fi
+  done
 
-  read -p "Create ${passphrase_file_path}? [Y/n]" -n1
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    # umask 0377
-    # touch $passphrase_file_path
-    echo "Add your encryption key to $passphrase_file_path"
+  read -e -p 'Name of the backup job to create: ' job_name
+  job_name_envfile=${USER_BACKUP_CONFDIR}/borgbackup-${repobase_file%-repobase}_${job_name}-env
+  cat <<EOF >$job_name_envfile
+REPOBASE=$REPOBASE
+REPONAME=$job_name
+
+export BORG_REPO="\${REPOBASE}/\${REPONAME}"
+EOF
+  source $job_name_envfile
+
+  echo "The backup needs a passphrase that should preferably be stored in, and probably generated by, a password manager."
+  passphrase1=x
+  passphrase2=y
+  while [[ "$passphrase1" != "$passphrase2" ]]; do
+    passphrase1=$(read_nonempty_pwd_with_prompt "Please enter passphrase: ")
+    passphrase2=$(read_nonempty_pwd_with_prompt "Please repeat same passphrase for verification: ")
+    [[ "$passphrase1" != "$passphrase2" ]] && echo "passphrase entry are different. Please try again"
+  done
+  export BORG_PASSPHRASE=$passphrase1
+
+  echo "Creating borg repository:"
+  borg init --encryption=repokey-blake2
+
+  if read_Y_or_N "Should the passphrase be stored in a file in ${USER_BACKUP_CONFDIR}? [y/n] "; then
+    passphrase_file=${USER_BACKUP_CONFDIR}/.borg-${job_name}-passphrase
+    echo "Creating $passphrase_file"
+    umask_old=$(umask -p)
+    umask 0377
+    echo $passphrase1 >$passphrase_file
+    $umask_old
+
+    echo "export BORG_PASSCOMMAND=\"cat $passphrase_file\"" >>$job_name_envfile
   fi
+
+  echo # new line
+  echo "The encrypted repository is now created. You need the key as well as the passphrase to use it."
+  echo "Retrieve the key by following commands, and store in a safe place (e.g. a password manager):"
+  echo " source $job_name_envfile"
+  echo " borg key export :: /dev/stdout"
 
   echo 'Now copy job-template.sh to a suitable place and create your first backup job!'
   echo 'Then create a cron job for scheduling it.'
@@ -76,23 +159,20 @@ setup_job () {
 # START SCRIPT
 ###############
 
-echo "Configuring generic $JOB_NAME"
+echo "Configuring generic $MAIN_SCRIPT"
 please_confirm
 
-read -p "Create symlink for ${JOB_NAME} in ${BORG_EXECUTE_DIR}? [Y/n] " -n 1
-echo # new line
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if read_Y_or_N "Create symlink for ${MAIN_SCRIPT} in ${BORG_EXECUTE_DIR}? [y/n] "; then
+  echo # new line
   place-script-in-path
 fi
 
-read -p "Configure remote backup? [Y/n] " -n 1
-echo # new line
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if read_Y_or_N "Configure a new remote backup location (repobase)? [y/n] "; then
+  echo # new line
   configure_remote_backup
 fi
 
-read -p "Setup a backup job? [Y/n] " -n 1
-echo # new line
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if read_Y_or_N "Setup a new backup job? [y/n] "; then
+  echo # new line
   setup_job
 fi
