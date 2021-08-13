@@ -48,12 +48,12 @@ You need to have borg installed on the client machine. You should also install b
 To reach the remote host, SSH is used. Therefore, you will need to create a "backup user" on the remote host that will "receive" the files. This user should be locked down and not used for anything else than creating backups. It obviously needs write access to the directory where you will place your backups.
 
 Prerequisites:
-- Pick a remote host wit an SSH server.
+- Pick a remote host with an SSH server.
 - A backup user on the remote host.
-- It it not required, but recommended, to install borg on the remote host
+- It is not required, but recommended, to install borg on the remote host
 - A directory to place the backups in, something like `/srv/backups`.
 
-Initialize a borg repository on the remote, see Borg documentation for more examples:
+Initialize a borg repository on the remote, see [borg documentation](https://borgbackup.readthedocs.io/en/stable/index.html) for more examples:
 ```
 $ borg init --encryption=repokey-blake2 ssh://backup-user-on-remote-host@remote-host:ssh-port-number/path-to-backup-directory/borg-repository-name
 ```
