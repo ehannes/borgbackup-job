@@ -71,8 +71,8 @@ configure_remote_backup()  {
 
   read -e -p 'Remote user name: ' borg_remote_user
   read -e -p 'Absolute path to backup directory on remote host (e.g. /srv/backups/): ' borg_remote_backup_path
-
-  echo "\"$USER\" needs SSH access to the remote host to be able to send over the backups."
+  echo
+  echo User "\"$USER\" needs SSH access to the remote host to be able to send over the backups."
   echo 'Please generate an SSH key and copy the id to the remote host.'
   echo "Something like this when logged in as ${USER}:"
   echo '$ ssh-keygen -t rsa -b 4096'
@@ -87,8 +87,9 @@ configure_remote_backup()  {
   echo "command=\"borg serve --restrict-to-path ${borg_remote_backup_path}\",restrict"
 
   echo # new line
-  repobasefile="${USER_BACKUP_CONFDIR}/${borg_remote_host}-repobase"
-  mkdir -p "$USER_BACKUP_CONFDIR"
+  repobasefile="${USER_BACKUP_CONFDIR}/${borg_remote_host}.repobase"
+  # shellcheck disable=SC2174
+  mkdir -p --mode 750 "$USER_BACKUP_CONFDIR"
 
   echo "Storing configuration for ${borg_remote_host} in file $repobasefile"
   echo REPOBASE="\"ssh://${borg_remote_user}@${borg_remote_host}:${borg_remote_port:-22}$borg_remote_backup_path\"" \
@@ -96,24 +97,25 @@ configure_remote_backup()  {
 }
 
 setup_job()  {
-  mkdir -p "${USER_BACKUP_CONFDIR}"
+  # shellcheck disable=SC2174
+  mkdir -p --mode 750 "${USER_BACKUP_CONFDIR}"
 
-  mapfile -t repobase_files < <( bash -c "cd ${USER_BACKUP_CONFDIR}; ls *-repobase" )
+  mapfile -t repobase_files < <( bash -c "cd ${USER_BACKUP_CONFDIR}; ls *.repobase" )
   echo "Which repository config should be used to store the backup?"
   PS3="Please select from list above: "
-  select repobase_file in ${repobase_files[*]} "Other"; do
-    if   [[ $repobase_file == "Other" ]]; then
-      die   0 "Please manually create a *-repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
+  select repobase_file in ${repobase_files[*]} "Add new"; do
+    if   [[ $repobase_file == "Add new" ]]; then
+      die 0 "Please manually create a *.repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
     elif   [[ -n $repobase_file ]]; then
       source "${USER_BACKUP_CONFDIR}"/"$repobase_file"
       break
     else
-      die   1 "Invalid selection. Exiting"
+      die 1 "Invalid selection. Exiting"
     fi
   done
 
   read -e -p 'Name of the backup job to create: ' job_name
-  job_name_envfile="${USER_BACKUP_CONFDIR}/borgbackup-${repobase_file%-repobase}_${job_name}-env"
+  job_name_envfile="${USER_BACKUP_CONFDIR}/${repobase_file%.repobase}_${job_name}.env"
   cat <<EOF >"$job_name_envfile"
 REPOBASE=$REPOBASE
 REPONAME=$job_name
@@ -132,11 +134,12 @@ EOF
   done
   export BORG_PASSPHRASE=$passphrase1
 
-  echo "Creating borg repository:"
-  borg init --encryption=repokey-blake2
+  echo
+  echo "Creating borg repository..."
+  borg init --encryption=repokey-blake2 --verbose
 
   if read_Y_or_N "Should the passphrase be stored in a file in ${USER_BACKUP_CONFDIR}? [y/n] "; then
-    passphrase_file=${USER_BACKUP_CONFDIR}/.borg-${job_name}-passphrase
+    passphrase_file=${USER_BACKUP_CONFDIR}/.${repobase_file%.repobase}_${job_name}.passphrase
     echo "Creating $passphrase_file"
     umask_old=$(umask -p)
     umask 0377
@@ -159,6 +162,8 @@ EOF
 ###############
 # START SCRIPT
 ###############
+
+umask 0177  # user gets rw of config files
 
 echo "Configuring generic $MAIN_SCRIPT"
 please_confirm
