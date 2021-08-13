@@ -14,7 +14,7 @@ TO_BACKUP=(
   )
 
 #get repo name and auth details
-source $HOME/.borg-reponame-env.bash
+source $HOME/.borgbackup/host_reponame.env
 
 function stop_services {
   echo 'Stopping services that can alter data'
