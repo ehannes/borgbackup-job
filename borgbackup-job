@@ -1,12 +1,41 @@
 #!/bin/bash
 
-PATHS_TO_BACKUP=("$@")
 
 # Some helpers and error handling
-info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
+info() { [[ -n $1 ]] && printf "\n%(%F_%T)T %s\n" -1 "$*" >&2; }
 die() { rc=$1; shift; info "$*"; exit "$rc" ;}
+abort() { [[ -n $1 ]] && printf "%s\n" "$*" >&2; exit 2 ;}
 warning_or_error() { code=$1; ret="warning"; [[ $code -gt 1 ]] && ret="error"; echo $ret; }
-trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
+trap 'die 2 "Backup interrupted"' INT TERM
+
+init() {
+  paths_to_backup=()
+  while [[ $# -gt 0 ]]; do
+    case $1 in
+      -e|--envfile)
+        envfile="$2"
+        shift 2 || abort "$1 requires a filename argument"
+        ;;
+      *)
+        paths_to_backup+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  if [[ -n $envfile ]]; then
+    source "$envfile" || abort
+  fi
+  # TO_BACKUP can come from $envfile, but files on command line overrides
+  if [[ ${#paths_to_backup[*]} -gt 0 ]]; then
+    TO_BACKUP=( "${paths_to_backup[@]}" )
+  fi
+  [[ ${#TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup"
+
+}
+
+## main
+init "$@"
 
 info "Starting borg backup"
 
