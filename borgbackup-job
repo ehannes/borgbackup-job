@@ -18,7 +18,7 @@ borg create                       \
      --list                       \
                                   \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
-     "${PATHS_TO_BACKUP[@]}" || die $? "borg create resulted in $(warning_or_error $?). Exiting"
+     "${PATHS_TO_BACKUP[@]}" || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
 
 info "Pruning repository"
 
@@ -28,4 +28,4 @@ borg prune             \
     --keep-daily    14 \
     --keep-weekly   4  \
     --keep-monthly  12 \
-    --keep-yearly   5   || die $? "borg prune resulted in $(warning_or_error $?). Exiting"
+    --keep-yearly   5   || die $? "borg prune ended with $(warning_or_error $?)."
