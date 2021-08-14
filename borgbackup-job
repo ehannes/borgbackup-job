@@ -9,7 +9,7 @@ warning_or_error() { code=$1; ret="warning"; [[ $code -gt 1 ]] && ret="error"; e
 trap 'die 2 "Backup interrupted"' INT TERM
 
 init() {
-  paths_to_backup=()
+  paths_on_cmdline=()
   while [[ $# -gt 0 ]]; do
     case $1 in
       -e|--envfile)
@@ -17,7 +17,7 @@ init() {
         shift 2 || abort "$1 requires a filename argument"
         ;;
       *)
-        paths_to_backup+=("$1")
+        paths_on_cmdline+=("$1")
         shift
         ;;
     esac
@@ -27,8 +27,8 @@ init() {
     source "$envfile" || abort
   fi
   # TO_BACKUP can come from $envfile, but files on command line overrides
-  if [[ ${#paths_to_backup[*]} -gt 0 ]]; then
-    TO_BACKUP=( "${paths_to_backup[@]}" )
+  if [[ ${#paths_on_cmdline[*]} -gt 0 ]]; then
+    TO_BACKUP=( "${paths_on_cmdline[@]}" )
   fi
   [[ ${#TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup"
 
