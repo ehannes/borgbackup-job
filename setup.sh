@@ -15,7 +15,8 @@ USER_BACKUP_CONFDIR="${HOME}/.borgbackup"
 
 die() {
   local exitcode=$1
-  local msg="$2"
+  shift
+  local msg="$*"
   echo -e "$msg" >&2
   exit "$exitcode"
 }
@@ -65,7 +66,15 @@ place-script-in-path()  {
   sudo ln -s "$MAIN_PATH"/$MAIN_SCRIPT $BORG_EXECUTE_DIR
 }
 
-configure_remote_backup()  {
+configure_backup_target()  {
+  echo "Do you want to configure local target (on this host) or remote target (over ssh)?"
+  select ans in "local" "remote"; do
+    if [[ $ans == "local" ]]; then
+      die 0 "Configuration of local target is not (yet) supported byt this script."\
+            "\nPlease manually create a *.repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
+    fi
+    break
+  done
   read -e -p 'Borg remote host[:port] to send backup to (for instance example.com): ' borg_remote_host
   IFS=: read borg_remote_host borg_remote_port <<<"$borg_remote_host"
 
@@ -100,18 +109,20 @@ setup_job()  {
   # shellcheck disable=SC2174
   mkdir -p --mode 750 "${USER_BACKUP_CONFDIR}"
 
-  mapfile -t repobase_files < <( bash -c "cd ${USER_BACKUP_CONFDIR}; ls *.repobase" )
   echo "Which repository config should be used to store the backup?"
-  PS3="Please select from list above: "
-  select repobase_file in ${repobase_files[*]} "Add new"; do
-    if   [[ $repobase_file == "Add new" ]]; then
-      die 0 "Please manually create a *.repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
-    elif   [[ -n $repobase_file ]]; then
-      source "${USER_BACKUP_CONFDIR}"/"$repobase_file"
-      break
-    else
-      die 1 "Invalid selection. Exiting"
-    fi
+  while true; do
+    mapfile -t repobase_files < <( bash -c "cd ${USER_BACKUP_CONFDIR}; ls *.repobase")
+    select repobase_file in ${repobase_files[*]} "Add new"; do
+      if [[ $repobase_file == "Add new" ]]; then
+        configure_backup_target
+        break
+      elif [[ -n $repobase_file ]]; then
+        source "${USER_BACKUP_CONFDIR}"/"$repobase_file"
+        break 2
+      else
+        die 1 "Invalid selection. Exiting"
+      fi
+    done
   done
 
   read -e -p 'Name of the backup job to create: ' job_name
@@ -168,17 +179,30 @@ umask 0177  # user gets rw of config files
 echo "Configuring generic $MAIN_SCRIPT"
 please_confirm
 
-if read_Y_or_N "Create symlink for ${MAIN_SCRIPT} in ${BORG_EXECUTE_DIR}? [y/n] "; then
-  echo # new line
-  place-script-in-path
-fi
-
-if read_Y_or_N "Configure a new remote backup location (repobase)? [y/n] "; then
-  echo # new line
-  configure_remote_backup
-fi
-
-if read_Y_or_N "Setup a new backup job? [y/n] "; then
-  echo # new line
-  setup_job
-fi
+create_symlink="Create symlink for ${MAIN_SCRIPT} in ${BORG_EXECUTE_DIR}"
+new_remote="Configure a new backup target location (repobase)"
+new_backup="Setup a new backup job"
+PS3="Selection? "
+while true; do
+  echo
+  select task in "${create_symlink}" "${new_remote}" "${new_backup}" "Quit"; do
+    case $task in
+    "$create_symlink")
+      echo     # new line
+      place-script-in-path
+      ;;
+    "$new_remote")
+      echo     # new line
+      configure_backup_target
+      ;;
+    "$new_backup")
+      echo     # new line
+      setup_job
+      ;;
+    "Quit")
+      break     2
+      ;;
+    esac
+    break
+  done
+done
