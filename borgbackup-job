@@ -63,11 +63,11 @@ init() {
   if [[ -n $envfile ]]; then
     source "$envfile" || abort
   fi
-  # TO_BACKUP can come from $envfile, but files on command line overrides
+  # PATHS_TO_BACKUP can come from $envfile, but files on command line overrides
   if [[ ${#paths_on_cmdline[*]} -gt 0 ]]; then
-    TO_BACKUP=( "${paths_on_cmdline[@]}" )
+    PATHS_TO_BACKUP=( "${paths_on_cmdline[@]}" )
   fi
-  [[ ${#TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup (no files specified, and environment TO_BACKUP is not set)"
+  [[ ${#PATHS_TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup (no files specified, and environment PATHS_TO_BACKUP is not set)"
 
 }
 
