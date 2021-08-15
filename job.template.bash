@@ -8,7 +8,7 @@
 #30 03 * * * root /usr/local/bin/job.template.bash
 
 set -o errexit
-TO_BACKUP=(
+PATHS_TO_BACKUP=(
   "/home/test/a-directory-to-backup"
   "/srv/test/another directory to backup"
   )
@@ -32,4 +32,4 @@ stop_services
 # Ensure services are always started again, even on early exit
 trap start_services_again EXIT
 
-borgbackup-job "${TO_BACKUP[@]}"
+borgbackup-job "${PATHS_TO_BACKUP[@]}"
