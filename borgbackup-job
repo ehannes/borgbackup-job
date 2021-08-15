@@ -2,11 +2,91 @@
 
 set -o errexit
 
-PATHS_TO_BACKUP=("$@")
-
 # Some helpers and error handling
 info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
 trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
+
+NAME=$(basename $0)
+
+show_help () {
+  echo
+  echo "Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]"
+  echo 'Create backup with Borg'
+  echo
+  echo "Options:"
+  echo "  --help       Shows this help section"
+  echo "  --exclude    Path to exclude from backup, can be stated multiple times"
+  echo "               This option is passed directly to borg,"
+  echo "               see \"borg help patterns\" for more info"
+  echo
+  echo 'Examples:'
+  echo "  # Backup multiple paths"
+  echo "  $NAME /home/arthur/guide /home/arthur/memories-from-earth"
+  echo
+  echo '  # Exclude secrets and drafts'
+  echo "  $NAME /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'"
+  echo
+}
+
+if [ $# -eq 0 ] # No parameters?
+then
+  show_help
+  exit
+fi
+
+options=$(getopt --longoptions "help,dry-run,exclude:" -- "" "$@")
+
+if [ $? -ne 0 ] # Problem with getting options?
+then
+  show_help
+fi
+
+# Sets double dashes, which marks end of optional parameters
+eval set -- "$options"
+unset options
+
+excludes=()
+dry_run=false
+while true
+do
+  case $1 in
+    --exclude)
+      excludes+="$1 '$2' " # Whitespace last to support multiple parameters
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=true
+      shift
+      ;;
+    --help)
+      show_help
+      exit
+      ;;
+    --) # Separator between optional and positional parameters
+      shift
+      break
+      ;;
+    *)
+      show_help
+      ;;
+  esac
+done
+
+PATHS_TO_BACKUP=("$@") # Positional parameters
+
+if $dry_run; then
+  echo "Dry run"
+  echo "Exclude parameters:" $excludes
+
+  dry_run_paths=()
+  for path in "${PATHS_TO_BACKUP[@]}"
+  do
+    dry_run_paths+="'$path' "
+  done
+  echo "Paths to backup: $dry_run_paths"
+
+  exit
+fi
 
 info "Starting borg backup"
 
