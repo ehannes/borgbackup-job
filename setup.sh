@@ -138,6 +138,8 @@ PATHS_TO_BACKUP=(
   "/path/to/some/file"
   )
 
+# HOOKS=${job_name_envfile%.env}.hooks
+
 EOF
   source "$job_name_envfile"
 
