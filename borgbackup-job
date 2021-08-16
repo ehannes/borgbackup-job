@@ -20,7 +20,7 @@ Examples:
 EOM
 }
 
-USER_BACKUP_CONFDIR="${HOME}/.borgbackup"
+CONFDIR="${HOME}/.borgbackup"
 
 # Some helpers and error handling
 info() { [[ -n $1 ]] && printf "\n%(%F_%T)T %s\n" -1 "$*" >&2; }
@@ -34,7 +34,7 @@ source_conf_file() {
   if [[ -n $unqualified_name ]]; then
     filename="$unqualified_name"
     if [[ ${filename:0:1} != '/' ]]; then
-      filename="${USER_BACKUP_CONFDIR}"/"${filename}"
+      filename="${CONFDIR}"/"${filename}"
     fi
     source "$filename" || abort
   fi
