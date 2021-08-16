@@ -132,6 +132,12 @@ REPOBASE=$REPOBASE
 REPONAME=$job_name
 
 export BORG_REPO="\${REPOBASE}/\${REPONAME}"
+
+PATHS_TO_BACKUP=(
+  "/path/to/some/directory/"
+  "/path/to/some/file"
+  )
+
 EOF
   source "$job_name_envfile"
 
@@ -157,7 +163,7 @@ EOF
     echo "$passphrase1" > "$passphrase_file"
     $umask_old
 
-    echo "export BORG_PASSCOMMAND=\"cat $passphrase_file\"" >> "$job_name_envfile"
+    sed -i -e "/export BORG_REPO/aexport BORG_PASSCOMMAND=\"cat $passphrase_file\"" "$job_name_envfile"
   fi
 
   echo # new line
