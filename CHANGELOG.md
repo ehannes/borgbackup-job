@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+- Changes to setup script:
+  * Now uses a menu
+  * Should be run as the user that will run the backup
+  * Puts config files in $HOME/.borgbackup
+  * creates repo with the 'borg init' command if a new backup job is setup
 
 ## 2.0.0
 ### Changed
