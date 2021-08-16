@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Should be run as the user that will run the backup
   * Puts config files in $HOME/.borgbackup
   * creates repo with the 'borg init' command if a new backup job is setup
+- borgbackup-job now takes a --envfile argument to provide backup job configuration
 
 ## 2.0.0
 ### Changed
