@@ -11,7 +11,7 @@ BORG_EXECUTE_DIR='/usr/local/bin/'
 MAIN_SCRIPT='borgbackup-job'
 MAIN_PATH=$(dirname "$this_script")
 
-USER_BACKUP_CONFDIR="${HOME}/.borgbackup"
+CONFDIR="${HOME}/.borgbackup"
 
 die() {
   local exitcode=$1
@@ -71,7 +71,7 @@ configure_backup_target()  {
   select ans in "local" "remote"; do
     if [[ $ans == "local" ]]; then
       die 0 "Configuration of local target is not (yet) supported byt this script."\
-            "\nPlease manually create a *.repobase file in ${USER_BACKUP_CONFDIR} that sets REPOBASE variable to desired value"
+            "\nPlease manually create a *.repobase file in ${CONFDIR} that sets REPOBASE variable to desired value"
     fi
     break
   done
@@ -96,7 +96,7 @@ configure_backup_target()  {
   echo "command=\"borg serve --restrict-to-path ${borg_remote_backup_path}\",restrict"
 
   echo # new line
-  repobasefile="${USER_BACKUP_CONFDIR}/${borg_remote_host}.repobase"
+  repobasefile="${CONFDIR}/${borg_remote_host}.repobase"
   # shellcheck disable=SC2174
   mkdir -p --mode 750 "$USER_BACKUP_CONFDIR"
 
@@ -107,17 +107,17 @@ configure_backup_target()  {
 
 setup_job()  {
   # shellcheck disable=SC2174
-  mkdir -p --mode 750 "${USER_BACKUP_CONFDIR}"
+  mkdir -p --mode 750 "${CONFDIR}"
 
   echo "Which repository config should be used to store the backup?"
   while true; do
-    mapfile -t repobase_files < <( bash -c "cd ${USER_BACKUP_CONFDIR}; ls *.repobase")
+    mapfile -t repobase_files < <( bash -c "cd ${CONFDIR}; ls *.repobase")
     select repobase_file in ${repobase_files[*]} "Add new"; do
       if [[ $repobase_file == "Add new" ]]; then
         configure_backup_target
         break
       elif [[ -n $repobase_file ]]; then
-        source "${USER_BACKUP_CONFDIR}"/"$repobase_file"
+        source "${CONFDIR}"/"$repobase_file"
         break 2
       else
         die 1 "Invalid selection. Exiting"
@@ -126,7 +126,7 @@ setup_job()  {
   done
 
   read -e -p 'Name of the backup job to create: ' job_name
-  job_name_envfile="${USER_BACKUP_CONFDIR}/${repobase_file%.repobase}_${job_name}.env"
+  job_name_envfile="${CONFDIR}/${repobase_file%.repobase}_${job_name}.env"
   cat <<EOF >"$job_name_envfile"
 REPOBASE=$REPOBASE
 REPONAME=$job_name
@@ -157,8 +157,8 @@ EOF
   echo "Creating borg repository..."
   borg init --encryption=repokey-blake2 --verbose
 
-  if read_Y_or_N "Should the passphrase be stored in a file in ${USER_BACKUP_CONFDIR}? [y/n] "; then
-    passphrase_file=${USER_BACKUP_CONFDIR}/.${repobase_file%.repobase}_${job_name}.passphrase
+  if read_Y_or_N "Should the passphrase be stored in a file in ${CONFDIR}? [y/n] "; then
+    passphrase_file=${CONFDIR}/.${repobase_file%.repobase}_${job_name}.passphrase
     echo "Creating $passphrase_file"
     umask_old=$(umask -p)
     umask 0377
