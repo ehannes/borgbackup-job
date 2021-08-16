@@ -9,8 +9,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 2.0.0
 ### Changed
 - Setup script now installs the job in `/usr/local/bin` instead of `/usr/bin`
-- Changes to setup script:
-  * Now uses a menu
-  * Should be run as the user that will run the backup
-  * Puts config files in $HOME/.borgbackup
-  * creates repo with the 'borg init' command if a new backup job is setup
