@@ -1,0 +1,29 @@
+# This file contains hooks that are called in different stages of borgbackup-job
+# The language used is bash.
+
+pre_backup() {
+    # This is called before the backup is created
+    # it can be used for preparing for the backup, e.g. taking db backups, stopping services etc.
+    # This function is optional. It can be commented out completely.
+
+    # stupid docker example
+    docker stop some-container
+
+    # somewhat intelligent systemctl example
+    if systemctl is-active --quiet some-service; then
+        systemctl stop some-service
+        some-service-should-be-started="true"
+    fi
+}
+
+post_backup() {
+    # This is called after the backup is created
+    # it can be used for restoring the system to normal operation state.
+    # This function is optional. It can be commented out completely.
+
+    docker start some-container
+
+    if [[ "$some-service-should-be-started" == "true" ]] ; then
+        systemctl start some-service
+    fi
+}
