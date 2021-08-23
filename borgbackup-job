@@ -9,23 +9,23 @@ trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
 NAME=$(basename $0)
 
 show_help () {
-  echo
-  echo "Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]"
-  echo 'Create backup with Borg'
-  echo
-  echo "Options:"
-  echo "  --help       Shows this help section"
-  echo "  --exclude    Path to exclude from backup, can be stated multiple times"
-  echo "               This option is passed directly to borg,"
-  echo "               see \"borg help patterns\" for more info"
-  echo
-  echo 'Examples:'
-  echo "  # Backup multiple paths"
-  echo "  $NAME /home/arthur/guide /home/arthur/memories-from-earth"
-  echo
-  echo '  # Exclude secrets and drafts'
-  echo "  $NAME /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'"
-  echo
+  cat << "  EOM"
+  Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]
+  Create backup with Borg
+
+  Options:
+    --help       Shows this help section
+    --exclude    Path to exclude from backup, can be stated multiple times
+                 This option is passed directly to borg,
+                 see "borg help patterns" for more info
+
+  Examples:
+    # Backup multiple paths
+    $NAME /home/arthur/guide /home/arthur/memories-from-earth
+
+    # Exclude secrets and drafts
+    $NAME /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
+  EOM
 }
 
 if [ $# -eq 0 ] # No parameters?
