@@ -23,10 +23,35 @@ EOM
 CONFDIR="${HOME}/.borgbackup"
 
 # Some helpers and error handling
-info() { [[ -n $1 ]] && printf "\n%(%F_%T)T %s\n" -1 "$*" >&2; }
-die() { rc=$1; shift; info "$*"; exit "$rc" ;}
-abort() { [[ -n $1 ]] && printf "%s\n" "$*" >&2; exit 2 ;}
-warning_or_error() { code=$1; ret="warning"; [[ $code -gt 1 ]] && ret="error"; echo $ret; }
+info() {
+  # print timestamped info on stderr
+  if [[ -n $1 ]]; then
+    printf "\n%(%F_%T)T %s\n" -1 "$*" >&2
+  fi
+}
+die() {
+  # exit with indicated exit code and message on stderr
+  exitcode=$1
+  shift
+  info "$*"
+  exit "$exitcode"
+}
+abort() {
+  # exits with exit code 2 and message on stderr, without timestamp
+  # for user messages on commandline, i.e. at startup failure, where timestamp is ugly
+  if [[ -n $1 ]];then
+    printf "%s\n" "$*" >&2
+  fi
+  exit 2
+}
+warning_or_error() {
+  # borg exit code = 1 is warning, others are error.
+  # This translates the code to text used in message to user
+  code=$1
+  ret="warning"
+  [[ $code -gt 1 ]] && ret="error"
+  echo $ret
+}
 trap 'die 2 "Backup interrupted"' INT TERM
 
 source_conf_file() {
@@ -112,7 +137,8 @@ borg create                       \
      --list                       \
                                   \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
-     "${PATHS_TO_BACKUP[@]}" || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
+     "${PATHS_TO_BACKUP[@]}"      \
+  || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
 
 info "Pruning repository"
 
@@ -122,4 +148,5 @@ borg prune             \
     --keep-daily    14 \
     --keep-weekly   4  \
     --keep-monthly  12 \
-    --keep-yearly   5   || die $? "borg prune ended with $(warning_or_error $?)."
+    --keep-yearly   5  \
+  || die $? "borg prune ended with $(warning_or_error $?)."
