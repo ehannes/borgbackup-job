@@ -3,9 +3,25 @@
 PATHS_TO_BACKUP=("$@")
 
 # Some helpers and error handling
-info() { printf "\n%s %s\n\n" "$( date )" "$*" >&2; }
-die() { rc=$1; shift; info "$*"; exit "$rc" ;}
-warning_or_error() { code=$1; ret="warning"; [[ $code -gt 1 ]] && ret="error"; echo $ret; }
+info() {
+  # print timestamped info on stderr
+  printf "\n%(%F_%T)T %s\n" -1 "$*" >&2
+}
+die() {
+  # exit with indicated exit code and message on stderr
+  exitcode=$1
+  shift
+  info "$*"
+  exit "$exitcode"
+}
+warning_or_error() {
+  # borg exit code = 1 is warning, others are error.
+  # This translates the code to text used in message to user
+  code=$1
+  ret="warning"
+  [[ $code -gt 1 ]] && ret="error"
+  echo $ret
+}
 trap 'echo $( date ) Backup interrupted >&2; exit 2' INT TERM
 
 info "Starting borg backup"
@@ -18,7 +34,8 @@ borg create                       \
      --list                       \
                                   \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
-     "${PATHS_TO_BACKUP[@]}" || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
+     "${PATHS_TO_BACKUP[@]}" \
+  || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
 
 info "Pruning repository"
 
@@ -28,4 +45,5 @@ borg prune             \
     --keep-daily    14 \
     --keep-weekly   4  \
     --keep-monthly  12 \
-    --keep-yearly   5   || die $? "borg prune ended with $(warning_or_error $?)."
+    --keep-yearly   5  \
+  || die $? "borg prune ended with $(warning_or_error $?)."
