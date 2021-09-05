@@ -89,7 +89,7 @@ init() {
   eval set -- "$options"
   unset options
 
-  excludes=()
+  excludes_on_cmdline=()
   dry_run=false
   while true; do
     case $1 in
@@ -99,8 +99,8 @@ init() {
         shift 2
       ;;
     '--exclude')
-        [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
-        excludes+="$1 '$2' " # Whitespace last to support multiple parameters
+        [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
+        excludes_on_cmdline+=("$2")
         shift 2
       ;;
     '--dry-run')
@@ -123,7 +123,7 @@ init() {
 
   source_conf_file "$envfile"
 
-  # HOOKS is exptected to be set in the envfile
+  # HOOKS is expected to be set in the envfile
   source_conf_file "$HOOKS"
 
   # PATHS_TO_BACKUP can come from $envfile, but files on command line overrides
@@ -132,6 +132,17 @@ init() {
   fi
   [[ ${#PATHS_TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup (no files specified, and environment PATHS_TO_BACKUP is not set)"
 
+  # EXCLUDE can come from $envfile, but patterns on command line overrides (does NOT add to what's in $envfile)
+  EXCL=""
+  if [[ ${#excludes_on_cmdline[*]} -gt 0 ]]; then
+    for excl in "${excludes_on_cmdline[@]}"; do
+      EXCL="$EXCL --exclude $excl"
+    done
+  elif [[ ${#EXCLUDE[*]} -gt 0 ]]; then
+    for excl in "${EXCLUDE[@]}"; do
+      EXCL="$EXCL --exclude $excl"
+    done
+  fi
 }
 
 ## main
@@ -152,7 +163,7 @@ fi
 
 if $dry_run; then
   echo "Dry run"
-  echo "Exclude parameters:" $excludes
+  echo "Exclude parameters: $EXCL"
 
   dry_run_paths=()
   for path in "${PATHS_TO_BACKUP[@]}"
@@ -172,7 +183,7 @@ borg create                       \
      --show-rc                    \
      --filter AME                 \
      --list                       \
-                                  \
+     $EXCL                        \
      ::'{now:%Y-%m-%dT%H:%M:%S}'  \
      "${PATHS_TO_BACKUP[@]}"      \
   || die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
