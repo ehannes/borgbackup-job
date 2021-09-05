@@ -127,6 +127,11 @@ setup_job()  {
 
   read -e -p 'Name of the backup job to create: ' job_name
   job_name_envfile="${CONFDIR}/${repobase_file%.repobase}_${job_name}.env"
+  if [[ -f $job_name_envfile ]]; then
+    echo "File $job_name_envfile already exists. Please remove it manually and try again!"
+    sleep 2 # give user chance to realize there was a problem
+    return
+  fi
   cat <<EOF >"$job_name_envfile"
 REPOBASE=$REPOBASE
 REPONAME=$job_name
@@ -134,8 +139,13 @@ REPONAME=$job_name
 export BORG_REPO="\${REPOBASE}/\${REPONAME}"
 
 PATHS_TO_BACKUP=(
-  "/path/to/some/directory/"
-  "/path/to/some/file"
+#  "/path/to/some/directory/"
+#  "/path/to/some/file"
+  )
+
+EXCLUDE=(
+#  "pattern1"
+#  "another-pattern"
   )
 
 # HOOKS=${job_name_envfile%.env}.hooks
