@@ -5,13 +5,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
+### Changed
 - Changes to setup script:
   * Now uses a menu
   * Should be run as the user that will run the backup
   * Puts config files in $HOME/.borgbackup
   * creates repo with the 'borg init' command if a new backup job is setup
-- borgbackup-job now takes a --envfile argument to provide backup job configuration
-- support for pre/post-backup hooks in borgbackup-job
+
+### Added
+- support for pre/post-backup hooks in borgbackup-job (see template files)
+- Support for arguments.
+  * `--envfile`: reads backup job configuration from file 
+  * `--excludes` which excludes given paths from backup.
+  * `--dry-run` which runs sort of a dry run with given arguments.
+  * `--help` which prints help section.
 
 ## 2.0.0
 ### Changed

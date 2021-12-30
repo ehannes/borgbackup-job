@@ -1,22 +1,31 @@
 #!/bin/bash
 
+PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
 NAME=$(basename $0)
 show_help () {
-  cat <<EOM
-Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]
-Create backup with Borg.
+  cat << EOM | sed -e's/^  //'
+  Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]
+  Create backup with Borg
 
-Options:
-  --help          Shows this help section
-  --envfile file  Settings file for the backup to run
+  Options:
+    --help          Shows this help section
+    --envfile file  Settings file for the backup to run
+    --exclude       Path to exclude from backup, can be stated multiple times
+                    This option is passed directly to borg,
+                    see "borg help patterns" for more info
 
-PATHS_TO_BACKUP   Files to backup. If given, this will override the files to backup
-                  specified in the settings file.
+  PATHS_TO_BACKUP   Files to backup. If given, this will override the files to backup
+                    specified in the settings file.
 
-Examples:
-  # Backup multiple paths
-  $NAME --envfile .borgbackup/backup.env guide /home/arthur/memories-from-earth
+  Examples:
+    # Backup multiple paths
+    $NAME /home/arthur/guide /home/arthur/memories-from-earth
 
+    # Exclude secrets and drafts
+    $NAME /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
+
+    # Use configuration stored in an envfile
+    $NAME --envfile ~/.borgbackup/backup.env
 EOM
 }
 
@@ -30,7 +39,7 @@ info() {
   fi
 }
 die() {
-  # exit with indicated exit code and message on stderr
+  # exit with indicated exit code and
   exitcode=$1
   shift
   info "$*"
@@ -66,23 +75,37 @@ source_conf_file() {
 }
 
 init() {
-  options=$(getopt --name "$NAME" --longoptions "help,envfile:" -- "" "$@")
+  if [[ $# -eq 0 ]]; then  # No parameters?
+    abort "$(show_help)"
+  fi
+
+  options=$(getopt --name "$NAME" --longoptions "help,envfile:,dry-run,exclude:" -- "" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
-    show_help
-    die 1
+    abort "$(show_help)"
   fi
 
   # Sets double dashes, which marks end of optional parameters
   eval set -- "$options"
   unset options
 
+  excludes=()
+  dry_run=false
   while true; do
     case $1 in
     '--envfile')
         [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
         envfile="$2"
         shift 2
+      ;;
+    '--exclude')
+        [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
+        excludes+="$1 '$2' " # Whitespace last to support multiple parameters
+        shift 2
+      ;;
+    '--dry-run')
+        dry_run=true
+        shift
       ;;
     '--help')
         show_help
@@ -125,6 +148,20 @@ fi
 if [[ $(type -t pre_backup) == 'function' ]]; then
   info "Running pre-backup hook"
   pre_backup
+fi
+
+if $dry_run; then
+  echo "Dry run"
+  echo "Exclude parameters:" $excludes
+
+  dry_run_paths=()
+  for path in "${PATHS_TO_BACKUP[@]}"
+  do
+    dry_run_paths+="'$path' "
+  done
+  echo "Paths to backup: $dry_run_paths"
+
+  exit
 fi
 
 info "Starting borg backup"
