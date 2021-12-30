@@ -10,15 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Now uses a menu
   * Should be run as the user that will run the backup
   * Puts config files in $HOME/.borgbackup
-  * creates repo with the 'borg init' command if a new backup job is setup
+  * Creates repo with the 'borg init' command if a new backup job is setup
 
 ### Added
-- support for pre/post-backup hooks in borgbackup-job (see template files)
-- Support for arguments.
-  * `--envfile`: reads backup job configuration from file 
-  * `--excludes` which excludes given paths from backup.
-  * `--dry-run` which runs sort of a dry run with given arguments.
-  * `--help` which prints help section.
+- Support for pre/post-backup hooks in borgbackup-job (see template files)
+- Support for arguments and the following is now implemented:
+  * `--envfile` reads backup job configuration from file
+  * `--excludes` which excludes given paths from backup
+  * `--dry-run` which runs sort of a dry run with given arguments
+  * `--help` which prints help section
 
 ## 2.0.0
 ### Changed
