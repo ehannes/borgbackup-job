@@ -86,6 +86,9 @@ init() {
     abort "$(show_help)"
   fi
 
+  HEALTHCHECKS_PINGKEY=
+  HEALTHCHECKS_SLUG=
+
   # Sets double dashes, which marks end of getopt parameters
   eval set -- "$options"
   unset options
@@ -163,6 +166,23 @@ run_hooks() {
   done
 }
 
+healthcheck_report() {
+  report_type=$1
+  if [[ -n "$HEALTHCHECKS_PINGKEY" ]] && [[ -n "$HEALTHCHECKS_SLUG" ]]; then
+    case $report_type in
+      start)
+        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/start
+        ;;
+      success)
+        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+        ;;
+      fail)
+        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/fail
+        ;;
+    esac
+  fi
+}
+
 ## main
 init "$@"
 
@@ -170,6 +190,8 @@ info "$NAME starting ${dry_run:+"dry-run"}"
 
 # use trap: in case 'borg create' fails we still want to restore system to production mode
 trap 'run_hooks post_backup ; info "$NAME ending"' EXIT
+
+healthcheck_report start
 
 run_hooks pre_backup
 
@@ -189,7 +211,10 @@ borg create \
   $EXCL \
   ::'{now:%Y-%m-%dT%H:%M:%S}' \
   "${PATHS_TO_BACKUP[@]}" ||
-  die $? "borg create ended with $(warning_or_error $?). Not pruning repository"
+  {
+    healthcheck_report fail
+    die $? "borg create ended with $(warning_or_error $?). Not pruning repository" ;
+  }
 
 info "Pruning repository"
 
@@ -200,4 +225,9 @@ borg prune \
   --keep-weekly "${KEEP_WEEKLY:-4}" \
   --keep-monthly "${KEEP_MONTHLY:-12}" \
   --keep-yearly "${KEEP_YEARLY:-5}" ||
-  die $? "borg prune ended with $(warning_or_error $?)."
+  {
+    healthcheck_report fail
+    die $? "borg prune ended with $(warning_or_error $?)."
+  }
+
+healthcheck_report success

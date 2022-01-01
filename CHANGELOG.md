@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `--excludes` which excludes given paths from backup
   * `--dry-run` which runs sort of a dry run with given arguments
   * `--help` which prints help section
+- Healthchecks.io integration 
 
 ## [2.0.0]
 ### Changed
