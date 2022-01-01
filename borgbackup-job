@@ -166,11 +166,10 @@ if $dry_run; then
   echo "Exclude parameters: $EXCL"
 
   dry_run_paths=()
-  for path in "${PATHS_TO_BACKUP[@]}"
-  do
-    dry_run_paths+="'$path' "
+  for path in "${PATHS_TO_BACKUP[@]}"; do
+    dry_run_paths+=("$path")
   done
-  echo "Paths to backup: $dry_run_paths"
+  echo "Paths to backup: ${dry_run_paths[*]}"
 
   exit
 fi
