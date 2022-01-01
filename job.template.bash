@@ -13,8 +13,8 @@ PATHS_TO_BACKUP=(
   "/srv/test/another directory to backup"
   )
 
-# shellcheck disable=SC2086
 #get repo name and auth details
+# shellcheck disable=SC2086
 source "$HOME"/.borgbackup/host_reponame.env
 
 function stop_services {
