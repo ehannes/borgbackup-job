@@ -70,6 +70,7 @@ source_conf_file() {
     if [[ ${filename:0:1} != '/' ]]; then
       filename="${CONFDIR}"/"${filename}"
     fi
+    # shellcheck disable=SC1090
     source "$filename" || abort
   fi
 }
