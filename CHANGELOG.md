@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Support for pre/post-backup hooks in borgbackup-job (see template files)
+- Mandatory parameter `envfile` reads backup job configuration from file
 - Support for arguments and the following is now implemented:
-  * `--envfile` reads backup job configuration from file
   * `--excludes` which excludes given paths from backup
   * `--dry-run` which runs sort of a dry run with given arguments
   * `--help` which prints help section
