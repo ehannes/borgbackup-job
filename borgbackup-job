@@ -1,15 +1,17 @@
 #!/bin/bash
 
 PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
+short_usage="Usage: $NAME envfile [OPTION]... [PATHS_TO_BACKUP]"
 NAME=$(basename "$0")
 show_help()  {
-  cat <<EOM  | sed -e's/^  //'
-  Usage: $NAME [OPTION]... [PATHS_TO_BACKUP]
+  cat <<EOM  | sed -e's/^  //'   # left justify help
+  ${short_usage}
   Create backup with Borg
+
+  envfile           Settings file for the backup to run
 
   Options:
     --help          Shows this help section
-    --envfile file  Settings file for the backup to run
     --exclude       Path to exclude from backup, can be stated multiple times
                     This option is passed directly to borg,
                     see "borg help patterns" for more info
@@ -29,7 +31,7 @@ show_help()  {
 EOM
 }
 
-CONFDIR="${HOME}/.borgbackup"
+DEFAULT_CONFDIR="${HOME}/.borgbackup"
 
 # Some helpers and error handling
 info() {
@@ -68,7 +70,7 @@ source_conf_file() {
   if [[ -n $unqualified_name ]]; then
     filename="$unqualified_name"
     if [[ ${filename:0:1} != '/' ]]; then
-      filename="${CONFDIR}"/"${filename}"
+      filename="${DEFAULT_CONFDIR}"/"${filename}"
     fi
     # shellcheck disable=SC1090
     source "$filename" || abort
@@ -80,7 +82,7 @@ init() {
     abort "$(show_help)"
   fi
 
-  options=$(getopt --name "$NAME" --longoptions "help,envfile:,dry-run,exclude:" -- "" "$@")
+  options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:" -- "" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     abort "$(show_help)"
@@ -92,13 +94,11 @@ init() {
 
   excludes_on_cmdline=()
   dry_run=false
+  envfile="$1"
+  [[ -r ${envfile} ]] || abort "enfile argument needed\n$short_usage"
+  shift
   while true; do
     case $1 in
-      '--envfile')
-        [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
-        envfile="$2"
-        shift 2
-        ;;
       '--exclude')
         [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
         excludes_on_cmdline+=("$2")
@@ -127,13 +127,13 @@ init() {
   # HOOKS is expected to be set in the envfile
   source_conf_file "$HOOKS"
 
-  # PATHS_TO_BACKUP can come from $envfile, but files on command line overrides
+  # PATHS_TO_BACKUP comes from $envfile, but files on command line overrides
   if [[ ${#paths_on_cmdline[*]} -gt 0 ]]; then
     PATHS_TO_BACKUP=("${paths_on_cmdline[@]}")
   fi
   [[ ${#PATHS_TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup (no files specified, and environment PATHS_TO_BACKUP is not set)"
 
-  # EXCLUDE can come from $envfile, but patterns on command line overrides (does NOT add to what's in $envfile)
+  # EXCLUDE comes from $envfile, but patterns on command line overrides (does NOT add to what's in $envfile)
   EXCL=""
   if [[ ${#excludes_on_cmdline[*]} -gt 0 ]]; then
     for excl in "${excludes_on_cmdline[@]}"; do
@@ -182,7 +182,7 @@ borg create \
   --stats \
   --show-version \
   --show-rc \
-  --filter    AME \
+  --filter AME \
   --list \
   $EXCL \
   ::'{now:%Y-%m-%dT%H:%M:%S}' \
