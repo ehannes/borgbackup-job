@@ -194,8 +194,8 @@ info "Pruning repository"
 borg prune \
   --list \
   --show-rc \
-  --keep-daily   14 \
-  --keep-weekly   4 \
-  --keep-monthly 12 \
-  --keep-yearly   5 ||
+  --keep-daily "${KEEP_DAILY:-14}" \
+  --keep-weekly "${KEEP_WEEKLY:-4}" \
+  --keep-monthly "${KEEP_MONTHLY:-12}" \
+  --keep-yearly "${KEEP_YEARLY:-5}" ||
   die $? "borg prune ended with $(warning_or_error $?)."
