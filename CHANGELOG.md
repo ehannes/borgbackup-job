@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 3.0.0
+## [3.0.0]
 ### Changed
 - Changes to setup script:
   * Now uses a menu
@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * `--dry-run` which runs sort of a dry run with given arguments
   * `--help` which prints help section
 
-## 2.0.0
+## [2.0.0]
 ### Changed
 - Setup script now installs the job in `/usr/local/bin` instead of `/usr/bin`
+
+[3.0.0]: https://github.com/ehannes/borgbackup-job/compare/v2.0.0...v3.0.0
+[2.0.0]: https://github.com/ehannes/borgbackup-job/compare/v1.0.0...v2.0.0
