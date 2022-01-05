@@ -82,6 +82,9 @@ init() {
     abort "$(show_help)"
   fi
 
+  envfile="$1"
+  [[ -r ${envfile} ]] || abort "envfile needed\n$short_usage"
+
   options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:" -- "" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
@@ -94,9 +97,6 @@ init() {
 
   excludes_on_cmdline=()
   dry_run=false
-  envfile="$1"
-  [[ -r ${envfile} ]] || abort "enfile argument needed\n$short_usage"
-  shift
   while true; do
     case $1 in
       '--exclude')
