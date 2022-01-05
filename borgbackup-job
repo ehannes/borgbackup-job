@@ -119,6 +119,7 @@ init() {
     esac
   done
 
+  shift
   paths_on_cmdline=("$@")
   set --
 
