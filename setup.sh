@@ -98,7 +98,7 @@ configure_backup_target()  {
   echo # new line
   repobasefile="${CONFDIR}/${borg_remote_host}.repobase"
   # shellcheck disable=SC2174
-  mkdir -p --mode 750 "$USER_BACKUP_CONFDIR"
+  mkdir -p --mode 750 "$CONFDIR"
 
   echo "Storing configuration for ${borg_remote_host} in file $repobasefile"
   echo REPOBASE="\"ssh://${borg_remote_user}@${borg_remote_host}:${borg_remote_port:-22}$borg_remote_backup_path\"" \
