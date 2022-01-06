@@ -85,6 +85,7 @@ init() {
 
   envfile="$1"
   [[ -r ${envfile} ]] || abort "envfile needed\n$short_usage"
+  shift
 
   options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:" -- "" "$@")
   # shellcheck disable=SC2181
@@ -120,7 +121,6 @@ init() {
     esac
   done
 
-  shift
   paths_on_cmdline=("$@")
   set --
 
