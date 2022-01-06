@@ -22,13 +22,13 @@ show_help()  {
 
   Examples:
     # With required arguments
-    $NAME ~/.borgbackup/host-backup.env
+    $NAME ~/.borgbackup/backup_host.env
 
     # Override paths in envfile
-    $NAME ~/.borgbackup/host-backup.env /home/arthur/guide /home/arthur/memories-from-earth
+    $NAME ~/.borgbackup/backup_host.env /home/arthur/guide /home/arthur/memories-from-earth
 
     # Override exclude in envfile
-    $NAME ~/.borgbackup/host-backup.env /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
+    $NAME ~/.borgbackup/backup_host.env /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
 EOM
 }
 
