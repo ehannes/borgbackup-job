@@ -15,19 +15,20 @@ show_help()  {
     --exclude       Path to exclude from backup, can be stated multiple times
                     This option is passed directly to borg,
                     see "borg help patterns" for more info
+    --dry-run       Test run, without actually taking a backup.
 
   PATHS_TO_BACKUP   Files to backup. If given, this will override the files to backup
                     specified in the settings file.
 
   Examples:
-    # Backup multiple paths
-    $NAME /home/arthur/guide /home/arthur/memories-from-earth
+    # With required arguments
+    $NAME ~/.borgbackup/host-backup.env
 
-    # Exclude secrets and drafts
-    $NAME /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
+    # Override paths in envfile
+    $NAME ~/.borgbackup/host-backup.env /home/arthur/guide /home/arthur/memories-from-earth
 
-    # Use configuration stored in an envfile
-    $NAME --envfile ~/.borgbackup/backup.env
+    # Override exclude in envfile
+    $NAME ~/.borgbackup/host-backup.env /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
 EOM
 }
 
