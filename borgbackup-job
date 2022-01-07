@@ -1,34 +1,34 @@
 #!/bin/bash
 
 PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
-short_usage="Usage: $NAME envfile [OPTION]... [PATHS_TO_BACKUP]"
 NAME=$(basename "$0")
+short_usage="Usage: $NAME -e filename [OPTIONS...] [PATHS_TO_BACKUP]"
 show_help()  {
   cat <<EOM  | sed -e's/^  //'   # left justify help
   ${short_usage}
   Create backup with Borg
 
-  envfile           Settings file for the backup to run
+  -e|--envfile filename   Settings file for the backup to run
 
   Options:
-    --help          Shows this help section
-    --exclude       Path to exclude from backup, can be stated multiple times
-                    This option is passed directly to borg,
-                    see "borg help patterns" for more info
-    --dry-run       Test run, without actually taking a backup.
+    --help                Shows this help section
+    --exclude             Path to exclude from backup, can be stated multiple times
+                          This option is passed directly to borg,
+                          see "borg help patterns" for more info
+    --dry-run             Test run, without actually taking a backup.
 
-  PATHS_TO_BACKUP   Files to backup. If given, this will override the files to backup
-                    specified in the settings file.
+  PATHS_TO_BACKUP         Files to backup. If given, this will override the files to backup
+                          specified in the settings file.
 
   Examples:
     # With required arguments
-    $NAME ~/.borgbackup/backup_host.env
+    $NAME --envfile ~/.borgbackup/backup_host.env
 
     # Override paths in envfile
-    $NAME ~/.borgbackup/backup_host.env /home/arthur/guide /home/arthur/memories-from-earth
+    $NAME -e ~/.borgbackup/backup_host.env /home/arthur/guide /home/arthur/memories-from-earth
 
     # Override exclude in envfile
-    $NAME ~/.borgbackup/backup_host.env /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
+    $NAME -e ~/.borgbackup/backup_host.env /home/arthur/guide --exclude '*.secret' --exclude '*/guide/drafts'
 EOM
 }
 
@@ -52,7 +52,7 @@ abort() {
   # exits with exit code 2 and message on stderr, without timestamp
   # for user messages on commandline, i.e. at startup failure, where timestamp is ugly
   if [[ -n $1 ]]; then
-    printf "%s\n" "$*" >&2
+    echo -e "$*" >&2
   fi
   exit 2
 }
@@ -79,15 +79,7 @@ source_conf_file() {
 }
 
 init() {
-  if [[ $# -eq 0 ]]; then  # No parameters?
-    abort "$(show_help)"
-  fi
-
-  envfile="$1"
-  [[ -r ${envfile} ]] || abort "envfile needed\n$short_usage"
-  shift
-
-  options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:" -- "" "$@")
+  options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:,envfile:" -- "e:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     abort "$(show_help)"
@@ -101,25 +93,33 @@ init() {
   dry_run=false
   while true; do
     case $1 in
-      '--exclude')
+      --envfile|-e)
+        [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
+        envfile="$2"
+        shift 2
+        ;;
+      --exclude)
         [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
         excludes_on_cmdline+=("$2")
         shift 2
         ;;
-      '--dry-run')
+      --dry-run)
         dry_run=true
         shift
         ;;
-      '--help')
+      --help)
         show_help
         die 0
         ;;
-      '--') # Separator between optional and positional parameters
+      --) # Separator between optional and positional parameters
         shift
         break
         ;;
     esac
   done
+
+  [[ -z ${envfile} ]] && abort "--envfile (or -e) needed (try \"$NAME --help\")\n$short_usage"
+  [[ -r ${envfile} ]] || abort "envfile \"$envfile\" is not readable\n$short_usage"
 
   paths_on_cmdline=("$@")
   set --
