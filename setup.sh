@@ -170,7 +170,7 @@ EOF
   borg init --encryption=repokey-blake2 --verbose
 
   if read_Y_or_N "Should the passphrase be stored in a file in ${CONFDIR}? [y/n] "; then
-    passphrase_file="$(dirname $job_name_envfile)/.$(basename ${job_name_envfile%.env}).passphrase"
+    passphrase_file=$(dirname "$job_name_envfile")/.$(basename "$job_name_envfile" .env).passphrase
     echo "Creating $passphrase_file"
     umask_old=$(umask -p)
     umask 0377
