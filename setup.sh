@@ -127,7 +127,7 @@ setup_job()  {
   done
 
   read -e -p 'Name of the backup job to create: ' job_name
-  job_name_envfile="${CONFDIR}/${repobase_file%.repobase}_${job_name}.env"
+  job_name_envfile="${CONFDIR}/${job_name}_${repobase_file%.repobase}.env"
   if [[ -f $job_name_envfile ]]; then
     echo "File $job_name_envfile already exists. Please remove it manually and try again!"
     sleep 2 # give user chance to realize there was a problem
@@ -170,7 +170,7 @@ EOF
   borg init --encryption=repokey-blake2 --verbose
 
   if read_Y_or_N "Should the passphrase be stored in a file in ${CONFDIR}? [y/n] "; then
-    passphrase_file=${CONFDIR}/.${repobase_file%.repobase}_${job_name}.passphrase
+    passphrase_file="$(dirname $job_name_envfile)/.$(basename ${job_name_envfile%.env}).passphrase"
     echo "Creating $passphrase_file"
     umask_old=$(umask -p)
     umask 0377
