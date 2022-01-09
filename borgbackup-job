@@ -38,7 +38,7 @@ DEFAULT_CONFDIR="${HOME}/.borgbackup"
 info() {
   # print timestamped info on stderr
   if [[ -n $1 ]]; then
-    printf "\n%(%F_%T)T %s\n" -1 "$*" >&2
+    printf "%(%F_%T)T %s\n" -1 "$*" >&2
   fi
 }
 die() {
@@ -90,7 +90,7 @@ init() {
   unset options
 
   excludes_on_cmdline=()
-  dry_run=false
+  unset dry_run
   while true; do
     case $1 in
       --envfile|-e)
@@ -104,7 +104,7 @@ init() {
         shift 2
         ;;
       --dry-run)
-        dry_run=true
+        dry_run="true"
         shift
         ;;
       --help)
@@ -148,36 +148,35 @@ init() {
   fi
 }
 
+run_hooks() {
+  hooks=("$@")
+  for hook in "${hooks[@]}"; do
+    if [[ $(type -t $hook) == 'function' ]]; then
+      if [[ $dry_run ]]; then
+        info "Would run $hook hook"
+      else
+        info "Running $hook hook"
+        $hook
+      fi
+    fi
+  done
+}
+
 ## main
 init "$@"
 
-info "$NAME starting"
-trap 'info "$NAME ending"' EXIT
+info "$NAME starting ${dry_run:+"dry-run"}"
 
-if [[ $(type -t post_backup) == 'function' ]]; then
-  # use trap: in case 'borg create' fails we still want to restore system to production mode
-  trap 'info "Running post-backup hook" ; post_backup ; info "$NAME ending"' EXIT
+# use trap: in case 'borg create' fails we still want to restore system to production mode
+trap 'run_hooks post_backup ; info "$NAME ending"' EXIT
+
+run_hooks pre_backup
+
+if [[ $dry_run ]]; then
+  borg() {
+    info "Would run borg $*"
+  }
 fi
-
-if [[ $(type -t pre_backup) == 'function' ]]; then
-  info "Running pre-backup hook"
-  pre_backup
-fi
-
-if $dry_run; then
-  echo "Dry run"
-  echo "Exclude parameters: $EXCL"
-
-  dry_run_paths=()
-  for path in "${PATHS_TO_BACKUP[@]}"; do
-    dry_run_paths+=("$path")
-  done
-  echo "Paths to backup: ${dry_run_paths[*]}"
-
-  exit
-fi
-
-info "Starting borg backup"
 
 # shellcheck disable=SC2086
 borg create \
