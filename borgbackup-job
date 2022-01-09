@@ -43,7 +43,7 @@ info() {
 }
 die() {
   # exit with indicated exit code and
-  exitcode=$1
+  local exitcode=$1
   shift
   info "$*"
   exit "$exitcode"
@@ -59,7 +59,7 @@ abort() {
 warning_or_error() {
   # borg exit code = 1 is warning, others are error.
   # This translates the code to text used in message to user
-  code=$1
+  local code=$1
   ret="warning"
   [[ $code -gt 1 ]] && ret="error"
   echo $ret
@@ -67,7 +67,7 @@ warning_or_error() {
 trap 'die 2 "Backup interrupted"' INT TERM
 
 source_conf_file() {
-  unqualified_name="$1"
+  local unqualified_name="$1" filename
   if [[ -n $unqualified_name ]]; then
     filename="$unqualified_name"
     if [[ ${filename:0:1} != '/' ]]; then
@@ -79,6 +79,7 @@ source_conf_file() {
 }
 
 init() {
+  local options
   options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:,envfile:" -- "e:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
@@ -89,7 +90,7 @@ init() {
   eval set -- "$options"
   unset options
 
-  excludes_on_cmdline=()
+  local -a excludes_on_cmdline
   unset dry_run
   while true; do
     case $1 in
@@ -121,7 +122,7 @@ init() {
   [[ -z ${envfile} ]] && abort "--envfile (or -e) needed (try \"$NAME --help\")\n$short_usage"
   [[ -r ${envfile} ]] || abort "envfile \"$envfile\" is not readable\n$short_usage"
 
-  paths_on_cmdline=("$@")
+  local -a paths_on_cmdline=("$@")
   set --
 
   source_conf_file "$envfile"
@@ -149,9 +150,9 @@ init() {
 }
 
 run_hooks() {
-  hooks=("$@")
-  for hook in "${hooks[@]}"; do
-    if [[ $(type -t $hook) == 'function' ]]; then
+  local hooks_to_run=("$@")
+  for hook in "${hooks_to_run[@]}"; do
+    if [[ $(type -t "$hook") == 'function' ]]; then
       if [[ $dry_run ]]; then
         info "Would run $hook hook"
       else
