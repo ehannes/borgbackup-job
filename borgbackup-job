@@ -111,7 +111,7 @@ init() {
         show_help
         die 0
         ;;
-      --) # Separator between optional and positional parameters
+      --) # end of getopt parsed parameters
         shift
         break
         ;;

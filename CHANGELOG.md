@@ -6,7 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 ### Changed
-- Changed syntax: `--envfile <filename>` is now a required parameter
+- Command syntax: `--envfile <filename>` is now a required parameter
+
 ## [3.0.1]
 ### Changed
 - Suggestion for how to name passphrase files
