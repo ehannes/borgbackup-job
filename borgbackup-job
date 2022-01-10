@@ -86,7 +86,7 @@ init() {
     abort "$(show_help)"
   fi
 
-  # Sets double dashes, which marks end of optional parameters
+  # Sets double dashes, which marks end of getopt parameters
   eval set -- "$options"
   unset options
 
