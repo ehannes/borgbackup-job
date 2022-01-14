@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command syntax: `--envfile <filename>` is now a required parameter
 
 ### Fixed
-- Naming convention of generated config files by setup.sh is now: <reponame>_<repolocation>
+- Naming convention of generated config files by setup.sh is now: `<reponame>_<repolocation>`
 
 ## [3.0.1]
 ### Changed
