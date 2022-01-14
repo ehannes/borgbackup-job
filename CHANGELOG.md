@@ -6,11 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [4.0.0]
 ### Added
 - Healthchecks.io integration
 
 ### Changed
-- Command syntax: `--envfile <filename>` is now a required parameter
+- **Breaking:** command syntax `--envfile <filename>` is now a required parameter
 
 ### Fixed
 - Naming convention of generated config files by setup.sh is now: `<reponame>_<repolocation>`
@@ -48,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Setup script now installs the job in `/usr/local/bin` instead of `/usr/bin`
 
+[4.0.0]: https://github.com/ehannes/borgbackup-job/compare/v3.0.1...v4.0.0
 [3.0.1]: https://github.com/ehannes/borgbackup-job/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/ehannes/borgbackup-job/compare/v2.0.0...v3.0.0
 [2.0.0]: https://github.com/ehannes/borgbackup-job/compare/v1.0.0...v2.0.0
