@@ -86,9 +86,6 @@ init() {
     abort "$(show_help)"
   fi
 
-  HEALTHCHECKS_PINGKEY=
-  HEALTHCHECKS_SLUG=
-
   # Sets double dashes, which marks end of getopt parameters
   eval set -- "$options"
   unset options
@@ -128,7 +125,23 @@ init() {
   local -a paths_on_cmdline=("$@")
   set --
 
+  # Initialize and reset constants that can be sourced from envfile
+  BORG_PASSCOMMAND=
+  BORG_REPO=
+  HEALTHCHECKS_PINGKEY=
+  HEALTHCHECKS_SLUG=
+  HOOKS=
+  KEEP_DAILY=
+  KEEP_MONTHLY=
+  KEEP_WEEKLY=
+  KEEP_YEARLY=
+  PATHS_TO_BACKUP=
+
   source_conf_file "$envfile"
+
+  # Unset functions that can be sourced from HOOKS
+  unset -f pre_backup
+  unset -f post_backup
 
   # HOOKS is expected to be set in the envfile
   source_conf_file "$HOOKS"
