@@ -126,22 +126,16 @@ init() {
   set --
 
   # Initialize and reset constants that can be sourced from envfile
-  BORG_PASSCOMMAND=
-  BORG_REPO=
-  HEALTHCHECKS_PINGKEY=
-  HEALTHCHECKS_SLUG=
-  HOOKS=
-  KEEP_DAILY=
-  KEEP_MONTHLY=
-  KEEP_WEEKLY=
-  KEEP_YEARLY=
-  PATHS_TO_BACKUP=
+  unset BORG_PASSCOMMAND BORG_REPO
+  unset HEALTHCHECKS_PINGKEY  HEALTHCHECKS_SLUG
+  unset HOOKS
+  unset KEEP_DAILY KEEP_MONTHLY KEEP_WEEKLY KEEP_YEARLY
+  unset PATHS_TO_BACKUP
 
   source_conf_file "$envfile"
 
   # Unset functions that can be sourced from HOOKS
-  unset -f pre_backup
-  unset -f post_backup
+  unset -f pre_backup post_backup
 
   # HOOKS is expected to be set in the envfile
   source_conf_file "$HOOKS"
