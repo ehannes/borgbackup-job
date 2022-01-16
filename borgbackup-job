@@ -42,7 +42,7 @@ info() {
   fi
 }
 die() {
-  # exit with indicated exit code and
+  # exit with indicated exit code and message on stderr
   local exitcode=$1
   shift
   info "$*"
@@ -67,7 +67,8 @@ warning_or_error() {
 trap 'die 2 "Backup interrupted"' INT TERM
 
 source_conf_file() {
-  local unqualified_name="$1" filename
+  local unqualified_name="$1"
+  local filename
   if [[ -n $unqualified_name ]]; then
     filename="$unqualified_name"
     if [[ ${filename:0:1} != '/' ]]; then
