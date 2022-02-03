@@ -5,11 +5,18 @@ setup() {
   load 'test_helper/bats-support/load'
   load 'test_helper/bats-assert/load'
   load 'test_helper/bats-mock/load'
+  load 'test_helper/bats-file/load'
 
   PROJECT_ROOT="$( cd "$( dirname "$BATS_TEST_FILENAME")"  >/dev/null 2>&1 && pwd)/.."
   PATH="$PROJECT_ROOT:$PATH"
 
   script_to_test=borg_serverside_checks
+}
+
+function teardown() {
+  if [[ $tmpdir ]]; then
+    temp_del "$tmpdir"
+  fi
 }
 
 ### mocks
@@ -72,10 +79,10 @@ function mock_externals() {
 }
 
 function assert_no_mocks_called() {
-  for the_mock in mocked_df mocked_host mocked_host_failed mocked_curl;do
-    if [[ ${!the_mock} ]];then
+  for the_mock in mocked_df mocked_host mocked_host_failed mocked_curl; do
+    if [[ ${!the_mock} ]]; then
       assert_equal ${the_mock}_called_"$(mock_get_call_num "${!the_mock}")"_times \
-                   ${the_mock}_called_0_times
+        ${the_mock}_called_0_times
     fi
   done
 }
@@ -247,13 +254,13 @@ function parameter_parsing() { #@test
   source "$script_to_test"
   declare_globals
 
-  parse_params --address example.com --conf /dev/null --hcpingkey a1 --hcslug slug --diskpath /srv --min_size 42
+  parse_params --address example.com --conf /dev/null --hcpingkey a1 --hcslug slug --diskpath /srv --min_sizeGB 42
   assert_equal "${conf[address]}" "example.com"
   assert_equal "${conf[conffile]}" "/dev/null"
   assert_equal "${conf[hcpingkey]}" "a1"
   assert_equal "${conf[hcslug]}" "slug"
   assert_equal "${conf[diskpath]}" "/srv"
-  assert_equal "${conf[min_size]}" "42"
+  assert_equal "${conf[min_sizeGB]}" "42"
 
   run parse_params -h
   assert_output -p "Usage"
@@ -264,7 +271,7 @@ function parameter_parsing() { #@test
   assert_output -p "Usage"
   assert_failure
 
-  for p in address conf hcpingkey hcslug diskpath min_size; do
+  for p in address conf hcpingkey hcslug diskpath min_sizeGB; do
     run parse_params --$p --bazinga
     assert_output --regexp "$p requires.*argument"
     assert_failure
@@ -292,8 +299,52 @@ function missing_required_parameters() { #@test
   assert_failure
 }
 
-function cmdline_options_override_configfile() { #@test
-  skip not_yet_implemented
+function cmdline_options_override_configfile_allparams() { #@test
+  tmpdir=$(temp_make)
+  conffile=$tmpdir/batstest.conf
+  cat <<EOF  | sed 's/^\s*//' >$conffile
+  # This is a comment and next line is empty
+
+  address=fromfile.example.com
+  hcpingkey=lisa
+  hcslug=sluggo
+  min_sizeGB=13
+  diskpath=$tmpdir
+EOF
+  mock_externals
+  source "$script_to_test"
+  declare_globals
+
+  main --address example.com --conf $conffile --hcpingkey a1 --hcslug slug --diskpath /srv --min_sizeGB 42
+
+  assert_equal "${conf[address]}" "example.com"
+  assert_equal "${conf[conffile]}" "$conffile"
+  assert_equal "${conf[hcpingkey]}" "a1"
+  assert_equal "${conf[hcslug]}" "slug"
+  assert_equal "${conf[diskpath]}" "/srv"
+  assert_equal "${conf[min_sizeGB]}" "42"
+}
+
+function cmdline_options_and_configfile_mixed() { #@test
+  tmpdir=$(temp_make)
+  conffile=$tmpdir/batstest.conf
+  cat <<EOF  | sed 's/^\s*//' >$conffile
+  address=fromfile.example.com
+  hcpingkey=lisa
+  hcslug=sluggo
+EOF
+  mock_externals
+  source "$script_to_test"
+  declare_globals
+
+  main --conf $conffile --diskpath /srv --min_sizeGB 42
+
+  assert_equal "${conf[address]}" "fromfile.example.com"
+  assert_equal "${conf[conffile]}" "$conffile"
+  assert_equal "${conf[hcpingkey]}" "lisa"
+  assert_equal "${conf[hcslug]}" "sluggo"
+  assert_equal "${conf[diskpath]}" "/srv"
+  assert_equal "${conf[min_sizeGB]}" "42"
 }
 
 function e2e_success() { #@test
@@ -316,4 +367,8 @@ function e2e_success() { #@test
   done
   assert_equal $hcping_start hcping_start_was_called
   assert_equal $hcping_success hcping_success_found
+}
+
+function logging_to_disk() { #@test
+  skip "not yet implemented"
 }
