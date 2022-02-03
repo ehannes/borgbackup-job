@@ -13,7 +13,8 @@ show_help() {
   -c|--conf configfile          Name of config file
   --hcpingkey ping              healthchecks.io ping key for project
   --hcslug slugid               healthchecks.io slug id for these checks
-
+  --diskpath                    Path to monitor for available space
+  --min_sizeGB                  Minimum number of GB free for passing check
   Configuration parameters on command line overrides the parameters in config file.
 
 EOM
@@ -22,12 +23,14 @@ EOM
 # constants
 ok="OK"
 fail="FAIL"
+DEFAULT_CONFDIR="${HOME}/.borgbackup"
 
 declare_globals() {
   declare -g ipv4regexp='^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}$'
   declare -A -g conf
   declare -ag summary
   declare -gi numfaults=0
+  declare -g parameterlist
 }
 ### utils
 
@@ -88,9 +91,9 @@ parse_params() {
         conf[diskpath]=${conf[diskpath]:-"$2"}
         shift
         ;;
-      --min_size)
+      --min_sizeGB)
         [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
-        conf[min_size]=${conf[min_size]:-"$2"}
+        conf[min_sizeGB]=${conf[min_sizeGB]:-"$2"}
         shift
         ;;
       --help | -h)
@@ -117,15 +120,16 @@ source_conf_file() {
     if [[ ${filename:0:1} != '/' ]]; then
       filename="${DEFAULT_CONFDIR}"/"${filename}"
     fi
-    for p in $parameters; do
-      unset "${!p}"
+    for p in $parameterlist; do
+      # shellcheck disable=SC2086 # double quote to prevent globbing
+      unset ${!p}
     done
     # shellcheck disable=SC1090
     source "$filename" || abort
   fi
 
   local conffile_options
-  for p in $parameters; do
+  for p in $parameterlist; do
     if [[ ${!p} ]]; then
       conffile_options="$conffile_options --$p ${!p}"
     fi
@@ -139,24 +143,18 @@ source_conf_file() {
 init() {
   declare_globals
 
-  local parameters="address hcpingkey hcslug conf min_size diskpath"
+  parameterlist="address hcpingkey hcslug conf min_sizeGB diskpath"
   local options
-  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,min_size:,diskpath:" -- "a:c:" "$@")
-  #echo "options:$options"
+  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,min_sizeGB:,diskpath:" -- "a:c:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     abort "$(show_help)"
   fi
 
-  #  eval set -- "$options"
-  #  unset options
-
+  # shellcheck disable=SC2086 # double quote to prevent globbing
   parse_params $options
-  #echo "cmdline params:"
-  #for p in "${!conf[@]}"; do echo "|$p|=|${conf[$p]}|";done
   if [[ ${conf[conffile]} ]]; then
-    abort conf file support not yet implemented
-#    source_conf_file "${conf[conffile]}"
+    source_conf_file "${conf[conffile]}"
   fi
 
   # verify input and configuration
@@ -289,12 +287,13 @@ check_disk_space() {
   # for the log
   df -h --output
 
+  local required_gb=${conf[min_sizeGB]:-100}
   local avail_gb
   avail_gb=$(df -BG --output=avail "$path" | tail -1 | tr -cd 0-9)
   enough_gb_avail() {
-    ((avail_gb >= ${conf[min_size]:-100}))
+    ((avail_gb >= required_gb ))
   }
-  do_check enough_gb_avail "Disk available for $path (${avail_gb}GB>=${conf[min_size]:-100}GB)"
+  do_check enough_gb_avail "Disk available for $path (${avail_gb}GB >= ${required_gb}GB)"
 }
 
 main() {
