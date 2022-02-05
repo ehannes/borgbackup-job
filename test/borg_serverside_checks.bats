@@ -302,7 +302,7 @@ function missing_required_parameters() { #@test
 function cmdline_options_override_configfile_allparams() { #@test
   tmpdir=$(temp_make)
   conffile=$tmpdir/batstest.conf
-  cat <<EOF  | sed 's/^\s*//' >$conffile
+  cat <<EOF  | sed 's/^\s*//' > "$conffile"
   # This is a comment and next line is empty
 
   address=fromfile.example.com
@@ -315,7 +315,7 @@ EOF
   source "$script_to_test"
   declare_globals
 
-  main --address example.com --conf $conffile --hcpingkey a1 --hcslug slug --diskpath /srv --min_sizeGB 42
+  main --address example.com --conf "$conffile" --hcpingkey a1 --hcslug slug --diskpath /srv --min_sizeGB 42
 
   assert_equal "${conf[address]}" "example.com"
   assert_equal "${conf[conffile]}" "$conffile"
@@ -328,7 +328,7 @@ EOF
 function cmdline_options_and_configfile_mixed() { #@test
   tmpdir=$(temp_make)
   conffile=$tmpdir/batstest.conf
-  cat <<EOF  | sed 's/^\s*//' >$conffile
+  cat <<EOF  | sed 's/^\s*//' > "$conffile"
   address=fromfile.example.com
   hcpingkey=lisa
   hcslug=sluggo
@@ -337,7 +337,7 @@ EOF
   source "$script_to_test"
   declare_globals
 
-  main --conf $conffile --diskpath /srv --min_sizeGB 42
+  main --conf "$conffile" --diskpath /srv --min_sizeGB 42
 
   assert_equal "${conf[address]}" "fromfile.example.com"
   assert_equal "${conf[conffile]}" "$conffile"

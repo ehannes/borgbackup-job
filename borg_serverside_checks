@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2155 # "Declare and assign separately..." (stupid rule for 'local')
 
 PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
 NAME=$(basename "$0")
@@ -31,8 +32,9 @@ declare_globals() {
   declare -ag summary
   declare -gi numfaults=0
   declare -g parameterlist
+  declare -g exitcode
 }
-### utils
+#################### utils
 
 info() {
   # print timestamped (optional) info on stderr
@@ -60,7 +62,7 @@ abort() {
   die 2 -n "$*"
 }
 
-### init
+#################### init
 
 parse_params() {
   eval set -- "$@"
@@ -157,8 +159,6 @@ init() {
     source_conf_file "${conf[conffile]}"
   fi
 
-  # verify input and configuration
-
   for required_param in address diskpath; do
     if [[ -z ${conf[$required_param]} ]]; then
       abort "Required parameter missing: ${required_param}\n$short_usage"
@@ -222,9 +222,11 @@ evaluate_and_report_healthckecksio() {
   else
     healthcheck_report success
   fi
+  ret=$numfaults
 }
 
-### check helpers
+#################### check helpers
+
 do_check() {
   local checkfunc=$1
   shift
@@ -244,8 +246,9 @@ filter_hostip() {
   tee /dev/stderr | sed -ne'/^.*has address /{s/.*has address //;p}'
 }
 
-#checks
-check_server_running() {
+#################### checks
+
+check_server_internal_health() {
   test="is-system-running (systemd)"
   test_result=$fail
   if systemctl is-system-running; then
@@ -291,10 +294,12 @@ check_disk_space() {
   local avail_gb
   avail_gb=$(df -BG --output=avail "$path" | tail -1 | tr -cd 0-9)
   enough_gb_avail() {
-    ((avail_gb >= required_gb ))
+    ((avail_gb >= required_gb))
   }
   do_check enough_gb_avail "Disk available for $path (${avail_gb}GB >= ${required_gb}GB)"
 }
+
+#################### main
 
 main() {
   init "$@"
@@ -302,7 +307,7 @@ main() {
 
   healthcheck_report start
 
-  check_server_running
+  check_server_internal_health
 
   get_public_ip
   actual_ip=$ret
@@ -315,12 +320,10 @@ main() {
   check_disk_space "${conf[diskpath]}"
 
   evaluate_and_report_healthckecksio
+  exitcode=$ret   # the exitcode is number of faults found
 }
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then # enable bats
   main "$@"
-  mainret=$?
-  if [ $mainret -gt 0 ]; then
-    exit $mainret
-  fi
+  exit "$exitcode"
 fi
