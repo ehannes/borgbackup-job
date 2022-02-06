@@ -3,8 +3,6 @@
 
 load serverside_common.bash
 
-### tests
-
 function args_missing_address_exits_with_help() { #@test
   source "$script_to_test"
   run init -a
@@ -88,7 +86,6 @@ function check_diskspace_gb_test() { #@test
   assert_output -p FAIL
   refute_output -p OK
 }
-
 
 function e2e_success() { #@test
   mock_externals

@@ -16,6 +16,7 @@ show_help() {
   --hcslug slugid               healthchecks.io slug id for these checks
   --diskpath                    Path to monitor for available space
   --min_sizeGB                  Minimum number of GB free for passing check
+  --logdir directory            Where to create log file. If not set, log to disk is not enabled.
   Configuration parameters on command line overrides the parameters in config file.
 
 EOM
@@ -33,6 +34,7 @@ declare_globals() {
   declare -gi numfaults=0
   declare -g parameterlist
   declare -g exitcode
+  declare -g logfile
 }
 #################### utils
 
@@ -98,6 +100,11 @@ parse_params() {
         conf[min_sizeGB]=${conf[min_sizeGB]:-"$2"}
         shift
         ;;
+      --logdir)
+        [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
+        conf[logdir]=${conf[logdir]:-"$2"}
+        shift
+        ;;
       --help | -h)
         show_help
         die 0
@@ -145,9 +152,9 @@ source_conf_file() {
 init() {
   declare_globals
 
-  parameterlist="address hcpingkey hcslug conf min_sizeGB diskpath"
+  parameterlist="address hcpingkey hcslug conf min_sizeGB diskpath logdir"
   local options
-  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,min_sizeGB:,diskpath:" -- "a:c:" "$@")
+  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,min_sizeGB:,diskpath:,logdir:" -- "a:c:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     abort "$(show_help)"
@@ -169,12 +176,29 @@ init() {
   [[ ${conf[hcslug]} ]]  && export HEALTHCHECKS_SLUG="${conf[hcslug]}"
 }
 
-### reporting tools
+# shellcheck disable=SC2120
+setup_logging() {
+  local logdir=${LOGDIR:-"$1"}
+  local logname=$NAME.$(date +%d).log
+  logfile=$logdir/$logname
+
+  if [[ -z $logdir ]];then
+    register_result $ok "Skipping log file creation, logdir not set"
+  fi
+
+  mkdir -p $logdir || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
+  oldfile="$(find $logdir -name "$logname" ! -newermt 'now - 1day')"
+  [[ $oldfile ]] && rm "$oldfile"
+  exec > >( tee -a "$logfile" ) 2>&1
+  do_check "[ $? == 0 ]" "Setup logging to disk ($(basename $logfile))"
+}
+
+#################### reporting tools
 
 register_result() {
-  local result=$1  # $ok or $fail
+  local result=$1   # $ok or $fail
   shift
-  local name="$*"
+  local name="$*"   # name of check
   info "${name}": "$result"
   summary+=("$name: $result")
   if [[ $result == "$fail" ]]; then
@@ -304,6 +328,8 @@ check_disk_space() {
 main() {
   init "$@"
   local ret # function return variable
+
+  setup_logging ${conf[logdir]}
 
   healthcheck_report start
 
