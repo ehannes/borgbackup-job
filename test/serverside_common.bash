@@ -7,14 +7,17 @@ setup() {
   PROJECT_ROOT="$( cd "$( dirname "$BATS_TEST_FILENAME")"  >/dev/null 2>&1 && pwd)/.."
   PATH="$PROJECT_ROOT:$PATH"
 
+  templogdir="$(temp_make)"
   # shellcheck disable=SC2034 # "appears unused": used in tests
   script_to_test=borg_serverside_checks
+  LOGDIR="$templogdir"
 }
 
 function teardown() {
   if [[ $tmpdir ]]; then
     temp_del "$tmpdir"
   fi
+  temp_del $templogdir
 }
 
 ### mocks
@@ -38,13 +41,13 @@ function mock_host() {
 }
 function mock_host_failure() {
   # failure return for host
-  mocked_host_fail="$(mock_create)"
-  mock_set_output "mocked_host_fail" "Host $(mock_get_call_args "$mocked_host_fail") not found: 2(SERVFAIL)"
+  mocked_host_fail2="$(mock_create)"
+  mock_set_output "mocked_host_fail2" "Host $(mock_get_call_args "$mocked_host_fail2") not found: 2(SERVFAIL)"
   function host() {
-    $mocked_host "$@"
+    $mocked_host_fail2 "$@"
   }
   export -f host
-  export mocked_host_fail
+  export mocked_host_fail2
 }
 function mock_host_with_failure_then_success() {
   mocked_host_fail="$(mock_create)"
