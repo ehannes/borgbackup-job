@@ -7,8 +7,13 @@ load serverside_common.bash
 
 function mock_curlmock_save_curldata() {
   curlmock="$(mock_create)"
-  echo '{ [[ "$*" =~ --data" "@- ]] && cat - > '$BATS_RUN_TMPDIR'/curldata; }' | \
-    mock_set_side_effect "$curlmock" -
+  function check_curl_params() {
+      while [[ $1 ]]; do
+        [[ $1 == --data-raw ]] && { echo "$2" > $BATS_RUN_TMPDIR/curldata;shift; }
+        shift
+      done
+  }
+  mock_set_side_effect "$curlmock" "$(declare -pf check_curl_params)"';check_curl_params "$@"'
   function curl() {
     $curlmock "$@"
   }
