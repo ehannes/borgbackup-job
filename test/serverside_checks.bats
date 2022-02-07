@@ -3,13 +3,6 @@
 
 load serverside_common.bash
 
-function args_missing_address_exits_with_help() { #@test
-  source "$script_to_test"
-  run init -a
-  assert_failure 2
-  assert_output --partial Usage
-}
-
 function get_public_ip_returns_an_ipv4_address() { #@test
   source "$script_to_test"
   #  mock_host # DON'T mock this. Would only test that the mock returns a valid address. Useless!

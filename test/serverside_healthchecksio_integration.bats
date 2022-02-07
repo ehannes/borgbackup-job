@@ -3,6 +3,21 @@
 
 load serverside_common.bash
 
+### mocks
+
+function mock_curlmock_save_curldata() {
+  curlmock="$(mock_create)"
+  echo '{ [[ "$*" =~ --data" "@- ]] && cat - > '$BATS_RUN_TMPDIR'/curldata; }' | \
+    mock_set_side_effect "$curlmock" -
+  function curl() {
+    $curlmock "$@"
+  }
+  export -f curl
+  export curlmock
+}
+
+### checks
+
 function healthcheck_report_doesnt_call_curl_when_no_env_set() { #@test
   source "$script_to_test"
   mock_curl
@@ -64,4 +79,19 @@ function success_causes_summary_logging_and_healthcheck_success_report() { #@tes
   assert_output -p "Summary"
   assert_output -p "bats testing of success"
   [[ $(mock_get_call_args "${mocked_curl}") =~ hc-ping.*$HEALTHCHECKS_SLUG$ ]]
+}
+
+function log_is_included_in_healthcheck_report() { #@test
+  mock_curlmock_save_curldata
+  source "$script_to_test"
+  # shellcheck disable=SC2034 # "variable appears unused"
+  HEALTHCHECKS_PINGKEY=123 HEALTHCHECKS_SLUG=batstestcase
+
+  register_result $ok "something worked"
+  healthcheck_report success
+
+  assert_equal "$(mock_get_call_num $curlmock)" 1
+  # shellcheck disable=SC2034
+  output="$(cat $BATS_RUN_TMPDIR/curldata)"
+  assert_output -p "something worked"
 }

@@ -31,6 +31,13 @@ function parameter_parsing() { #@test
   done
 }
 
+function args_missing_address_exits_with_help() { #@test
+  source "$script_to_test"
+  run init -a
+  assert_failure 2
+  assert_output --partial Usage
+}
+
 function missing_required_parameters() { #@test
   mock_externals
 
