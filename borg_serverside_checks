@@ -186,11 +186,11 @@ setup_logging() {
     register_result $ok "Skipping log file creation, logdir not set"
   fi
 
-  mkdir -p $logdir || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
-  oldfile="$(find $logdir -name "$logname" ! -newermt 'now - 1day')"
+  mkdir -p "$logdir" || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
+  oldfile="$(find "$logdir" -name "$logname" ! -newermt 'now - 1day')"
   [[ $oldfile ]] && rm "$oldfile"
   exec > >( tee -a "$logfile" ) 2>&1
-  do_check "[ $? == 0 ]" "Setup logging to disk ($(basename $logfile))"
+  do_check "[ $? == 0 ]" "Setup logging to disk ($(basename "$logfile"))"
 }
 
 #################### reporting tools
@@ -211,20 +211,21 @@ healthcheck_report() {
 
   local -i curl_ret=142
   if [[ -n "$HEALTHCHECKS_PINGKEY" ]] && [[ -n "$HEALTHCHECKS_SLUG" ]]; then
+    SLUGURL=https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+    logdata=$( IFS=$'\n'; echo -n "${summary[*]}" )
     case $report_type in
       start)
-        curl -f -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/start
+        curl --silent --show-error --max-time 10 --retry 5 "$SLUGURL"/start
         ;;
       success)
-        curl -f -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+        curl --silent --show-error --max-time 10 --retry 5 --data-raw "$logdata" "$SLUGURL"
         ;;
       fail)
-        curl -f -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/fail
+        curl --silent --show-error --max-time 10 --retry 5 --data-raw "$logdata" "$SLUGURL"/fail
         ;;
     esac
     curl_ret=$?
     report_result=$ok
-    # shellcheck disable=SC2181 # Check exit code directly, not indirectly with $?
     if ((curl_ret > 0)); then
       report_result="$fail"
       report_type="$report_type (curl exit=$curl_ret)"
