@@ -3,22 +3,22 @@
 
 PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
 NAME=$(basename "$0")
-short_usage="Usage: $NAME -a|--address internet_fqdn --hcpingkey key --hcslug slug"
+short_usage="Usage: $NAME [-c|--conf configfile][options]"
 show_help() {
   cat <<EOM  | sed -e's/^  //'   # left justify help
   ${short_usage}
   Check borg server status and report issues to healthchecks.io
 
-  -a|--address internet_fqdn    The server name in public DNS, e.g
-                                example.dyndns.org
-  -c|--conf configfile          Name of config file
-  --hcpingkey ping              healthchecks.io ping key for project
-  --hcslug slugid               healthchecks.io slug id for these checks
-  --diskpath                    Path to monitor for available space
-  --min_sizeGB                  Minimum number of GB free for passing check
-  --logdir directory            Where to create log file. If not set, log to disk is not enabled.
+  -a|--address internet_fqdn  The server name in public DNS, e.g
+                              example.dyndns.org
+  -c|--conf configfile        Name of config file
+  --hcpingkey ping            healthchecks.io ping key for project
+  --hcslug slugid             healthchecks.io slug id for these checks
+  --diskpath                  Path to monitor for available space
+  --min_sizeGB                Minimum number of GB free for passing check
+  --logdir directory          Where to create log file. If not set, log to disk is not enabled.
+  -|--help                    Show this help and exit.
   Configuration parameters on command line overrides the parameters in config file.
-
 EOM
 }
 
@@ -76,7 +76,8 @@ parse_params() {
         shift
         ;;
       --conf | -c)
-        [[ -r $2 ]] || abort "$1 requires a file name argument"
+        [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
+        [[ -r "$(get_conf_file_name $2)" ]] || abort "$1: $2 is not a readable file"
         conf[conffile]=${conf[conffile]:-"$2"}
         shift
         ;;
@@ -120,22 +121,36 @@ parse_params() {
   done
 }
 
-source_conf_file() {
+get_conf_file_name() {
   local unqualified_name="$1"
 
   local filename
-  if [[ -n $unqualified_name ]]; then
+  if [[ -e "$unqualified_name" ]];then
     filename="$unqualified_name"
-    if [[ ${filename:0:1} != '/' ]]; then
-      filename="${DEFAULT_CONFDIR}"/"${filename}"
+  else
+    if [[ ${unqualified_name:0:1} != '/' ]]; then
+      filename="${DEFAULT_CONFDIR}"/"${unqualified_name}"
     fi
-    for p in $parameterlist; do
-      # shellcheck disable=SC2086 # double quote to prevent globbing
-      unset ${!p}
-    done
-    # shellcheck disable=SC1090
-    source "$filename" || abort
   fi
+  echo $filename
+}
+source_conf_file() {
+  local unqualified_name="$1"
+  local filename=$(get_conf_file_name "$unqualified_name")
+
+#  local filename
+#  if [[ -n $unqualified_name ]]; then
+#    filename="$unqualified_name"
+#    if [[ ${filename:0:1} != '/' ]]; then
+#      filename="${DEFAULT_CONFDIR}"/"${filename}"
+#    fi
+  for p in $parameterlist; do
+    # shellcheck disable=SC2086 # "double quote to prevent globbing"
+    unset ${!p}
+  done
+  # shellcheck disable=SC1090
+  source "$filename" || abort
+#  fi
 
   local conffile_options
   for p in $parameterlist; do
@@ -144,7 +159,7 @@ source_conf_file() {
     fi
   done
   if [[ $conffile_options ]]; then
-    # shellcheck disable=SC2086 # double quote to prevent word split. (we want word splitting here)
+    # shellcheck disable=SC2086 # "double quote to prevent word split" (we want word splitting here)
     parse_params $conffile_options
   fi
 }
@@ -330,7 +345,7 @@ main() {
   init "$@"
   local ret # function return variable
 
-  setup_logging ${conf[logdir]}
+  setup_logging "${conf[logdir]}"
 
   healthcheck_report start
 
