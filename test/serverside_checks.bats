@@ -66,25 +66,37 @@ function verify_ips_are_same_succeeds() { #@test
 
 function check_diskspace_gb_test() { #@test
   source "$script_to_test"
+  declare_globals
   mock_df 111G
 
-  # check that default limit is used
-  run check_disk_space /dummy
+  run check_disk_space
+  assert_no_mocks_called
+  assert_output --regexp "diskcheckGB not set.*OK"
+
+  conf_diskcheck["dummy"]=110
+  run check_disk_space
   assert_output -p OK
   refute_output -p FAIL
 
+  conf_diskcheck[dummy]=110
+  conf_diskcheck[dummy2]=110
+  run check_disk_space
+  assert_output -p OK
+  refute_output -p FAIL
+
+  conf_diskcheck[bigenough]=110
   # shellcheck disable=SC2034 # "appears unused"
-  conf["minsize"]=112
-  run check_disk_space /dummy
-  assert_output -p FAIL
-  refute_output -p OK
+  conf_diskcheck[requirelots]=512
+  run check_disk_space
+  assert_output --regexp requirelots.*FAIL
+  assert_output --regexp bigenough.*OK
 }
 
 function e2e_success() { #@test
   mock_externals
   source "$script_to_test"
 
-  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskpath /tmp
+  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskcheckGB 100:/tmp
 
   assert_output -p "$ok"
   refute_output -p "$fail"

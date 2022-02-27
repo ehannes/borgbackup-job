@@ -9,13 +9,14 @@ show_help() {
   ${short_usage}
   Check borg server status and report issues to healthchecks.io
 
-  -a|--address internet_fqdn  The server name in public DNS, e.g
+  -a|--address internet_fqdn  The server name of this host in public DNS, e.g
                               example.dyndns.org
   -c|--conf configfile        Name of config file
   --hcpingkey ping            healthchecks.io ping key for project
   --hcslug slugid             healthchecks.io slug id for these checks
-  --diskpath                  Path to monitor for available space
-  --min_sizeGB                Minimum number of GB free for passing check
+  --diskcheckGB               minimum healhty size (unit: GB) and disk path to monitor
+                              Repeat --diskcheckGB to monitor several directories.
+                              Format: size:"/path/to/dir".
   --logdir directory          Where to create log file. If not set, log to disk is not enabled.
   -|--help                    Show this help and exit.
   Configuration parameters on command line overrides the parameters in config file.
@@ -29,10 +30,11 @@ DEFAULT_CONFDIR="${HOME}/.borgbackup"
 
 declare_globals() {
   declare -g ipv4regexp='^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}$'
-  declare -A -g conf
-  declare -ag summary
-  declare -gi numfaults=0
+  declare -g -A conf
+  declare -g -a summary
+  declare -g -i numfaults=0
   declare -g parameterlist
+  declare -g -A  conf_diskcheck
   declare -g exitcode
   declare -g logfile
 }
@@ -77,7 +79,7 @@ parse_params() {
         ;;
       --conf | -c)
         [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
-        [[ -r "$(get_conf_file_name $2)" ]] || abort "$1: $2 is not a readable file"
+        [[ -r "$(get_conf_file_name "$2")" ]] || abort "$1: $2 is not a readable file"
         conf[conffile]=${conf[conffile]:-"$2"}
         shift
         ;;
@@ -91,14 +93,12 @@ parse_params() {
         conf[hcslug]=${conf[hcslug]:-"$2"}
         shift
         ;;
-      --diskpath)
+      --diskcheckGB)
         [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
-        conf[diskpath]=${conf[diskpath]:-"$2"}
-        shift
-        ;;
-      --min_sizeGB)
-        [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
-        conf[min_sizeGB]=${conf[min_sizeGB]:-"$2"}
+        [[ $2 =~ [0-9]+:.+ ]] || abort "$1 $2: Invalid format, use \"$1 <size>:<path>\""
+        [[ ${2%%:*} =~ [0-9]+ ]] || abort "$1 $2: Invalid format (size not numerical), use \"$1 <size>:<path>\""
+        [[ -d ${2#*:} ]] || abort "$1: \"${2#*:}\" is not a (accessbile) directory"
+        conf_diskcheck[${2#*:}]=${2%%:*}
         shift
         ;;
       --logdir)
@@ -125,37 +125,37 @@ get_conf_file_name() {
   local unqualified_name="$1"
 
   local filename
-  if [[ -e "$unqualified_name" ]];then
+  if [[ -e "$unqualified_name" ]]; then
     filename="$unqualified_name"
   else
     if [[ ${unqualified_name:0:1} != '/' ]]; then
       filename="${DEFAULT_CONFDIR}"/"${unqualified_name}"
     fi
   fi
-  echo $filename
+  echo "$filename"
 }
 source_conf_file() {
   local unqualified_name="$1"
   local filename=$(get_conf_file_name "$unqualified_name")
 
-#  local filename
-#  if [[ -n $unqualified_name ]]; then
-#    filename="$unqualified_name"
-#    if [[ ${filename:0:1} != '/' ]]; then
-#      filename="${DEFAULT_CONFDIR}"/"${filename}"
-#    fi
   for p in $parameterlist; do
     # shellcheck disable=SC2086 # "double quote to prevent globbing"
     unset ${!p}
   done
   # shellcheck disable=SC1090
   source "$filename" || abort
-#  fi
+  #  fi
 
   local conffile_options
   for p in $parameterlist; do
     if [[ ${!p} ]]; then
-      conffile_options="$conffile_options --$p ${!p}"
+      if [[ $p == "diskcheckGB" && ! ${conf_diskcheck[*]}  ]]; then # don't use conffile if already on cmdline
+        for diskcheck in "${diskcheckGB[@]}"; do
+          conffile_options="$conffile_options --diskcheckGB \"$diskcheck\""
+        done
+      else
+        conffile_options="$conffile_options --$p ${!p}"
+      fi
     fi
   done
   if [[ $conffile_options ]]; then
@@ -167,9 +167,9 @@ source_conf_file() {
 init() {
   declare_globals
 
-  parameterlist="address hcpingkey hcslug conf min_sizeGB diskpath logdir"
+  parameterlist="address hcpingkey hcslug conf diskcheckGB logdir"
   local options
-  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,min_sizeGB:,diskpath:,logdir:" -- "a:c:" "$@")
+  options=$(getopt --name "$NAME" --longoptions "help,address:,hcpingkey:,hcslug:,conf:,diskcheckGB:,logdir:" -- "a:c:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     abort "$(show_help)"
@@ -181,12 +181,11 @@ init() {
     source_conf_file "${conf[conffile]}"
   fi
 
-  for required_param in address diskpath; do
+  for required_param in address; do
     if [[ -z ${conf[$required_param]} ]]; then
       abort "Required parameter missing: ${required_param}\n$short_usage"
     fi
   done
-  [[ -d ${conf[diskpath]} ]] || abort "Invalid diskpath (${conf[diskpath]}): not a directory"
   [[ ${conf[hcpingkey]} ]]  && export HEALTHCHECKS_PINGKEY="${conf[hcpingkey]}"
   [[ ${conf[hcslug]} ]]  && export HEALTHCHECKS_SLUG="${conf[hcslug]}"
 }
@@ -197,14 +196,15 @@ setup_logging() {
   local logname=$NAME.$(date +%d).log
   logfile=$logdir/$logname
 
-  if [[ -z $logdir ]];then
+  if [[ -z $logdir ]]; then
     register_result $ok "Skipping log file creation, logdir not set"
+    return
   fi
 
   mkdir -p "$logdir" || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
   oldfile="$(find "$logdir" -name "$logname" ! -newermt 'now - 1day')"
   [[ $oldfile ]] && rm "$oldfile"
-  exec > >( tee -a "$logfile" ) 2>&1
+  exec > >( tee -a "$logfile")  2>&1
   do_check "[ $? == 0 ]" "Setup logging to disk ($(basename "$logfile"))"
 }
 
@@ -227,7 +227,7 @@ healthcheck_report() {
   local -i curl_ret=142
   if [[ -n "$HEALTHCHECKS_PINGKEY" ]] && [[ -n "$HEALTHCHECKS_SLUG" ]]; then
     SLUGURL=https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
-    logdata=$( IFS=$'\n'; echo -n "${summary[*]}" )
+    logdata=$(IFS=$'\n'; echo -n "${summary[*]}" )
     case $report_type in
       start)
         curl --silent --show-error --max-time 10 --retry 5 "$SLUGURL"/start
@@ -325,18 +325,22 @@ verify_ips_are_same() {
 }
 
 check_disk_space() {
-  local path=$1
+  if (( ${#conf_diskcheck[@]} == 0 )); then
+    register_result $ok "Available disk check not configured, diskcheckGB not set"
+  else
+    for path in "${!conf_diskcheck[@]}"; do
+      # for the log
+      df -h --output "$path"
 
-  # for the log
-  df -h --output
-
-  local required_gb=${conf[min_sizeGB]:-100}
-  local avail_gb
-  avail_gb=$(df -BG --output=avail "$path" | tail -1 | tr -cd 0-9)
-  enough_gb_avail() {
-    ((avail_gb >= required_gb))
-  }
-  do_check enough_gb_avail "Disk available for $path (${avail_gb}GB >= ${required_gb}GB)"
+      local required_gb=${conf_diskcheck[$path]}
+      local avail_gb
+      avail_gb=$(df -BG --output=avail "$path" | tail -1 | tr -cd 0-9)
+      enough_gb_avail() {
+        ((avail_gb >= required_gb))
+      }
+      do_check enough_gb_avail "Disk available for $path (${avail_gb}GB >= ${required_gb}GB)"
+    done
+  fi
 }
 
 #################### main
@@ -359,7 +363,7 @@ main() {
 
   verify_ips_are_same "$dns_ip" "$actual_ip"
 
-  check_disk_space "${conf[diskpath]}"
+  check_disk_space
 
   evaluate_and_report_healthckecksio
   exitcode=$ret   # the exitcode is number of faults found
