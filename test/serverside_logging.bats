@@ -19,7 +19,7 @@ function logging_to_disk() { #@test
   logfile=$templogdir/$NAME.$(date +%d).log # mimic code in setup_logging
   assert_not_exist "$logfile"  # to make sure the logfile is actually created by the script
 
-  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskpath /tmp
+  run main --hcslug batstestcase --hcpingkey a1 --address example.com
 
   # log to stdout works
   assert_output -p "$ok"
@@ -39,7 +39,7 @@ function dont_log_do_disk_if_logdir_is_unset() { #@test
   assert_not_exist "$logfile"
 
   unset LOGDIR
-  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskpath /tmp
+  run main --hcslug batstestcase --hcpingkey a1 --address example.com
   assert_output -p "Skipping log file creation, logdir not set"
   assert_not_exist "$logfile"
 }
@@ -51,7 +51,7 @@ function last_months_log_is_removed() { #@test
   echo "last months data" > "$logfile"
   touch "$logfile" --date 'now -1 month'
 
-  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskpath /tmp
+  run main --hcslug batstestcase --hcpingkey a1 --address example.com --diskcheckGB 100:/tmp
   # shellcheck disable=SC2034 # "variable appears unused". (assert_output uses it)
   output="$(cat "$logfile")"
   refute_output -p "last months data"
