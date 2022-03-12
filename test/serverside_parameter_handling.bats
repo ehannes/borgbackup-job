@@ -8,13 +8,11 @@ function parameter_parsing() { #@test
   declare_globals
 
   parse_params --address example.com --conf /dev/null --hcpingkey a1 --hcslug slug --diskcheckGB 42:/srv
-  #--diskpath /srv --min_sizeGB 42
   assert_equal "${conf[address]}" "example.com"
   assert_equal "${conf[conffile]}" "/dev/null"
   assert_equal "${conf[hcpingkey]}" "a1"
   assert_equal "${conf[hcslug]}" "slug"
   assert_equal "${conf_diskcheck[/srv]}" 42
-#  assert_equal "${conf[min_sizeGB]}" "42"
 
   run parse_params -h
   assert_output -p "Usage"
@@ -26,7 +24,6 @@ function parameter_parsing() { #@test
   assert_failure
 
   for p in address conf hcpingkey hcslug diskcheckGB; do
-  #diskpath min_sizeGB; do
     run parse_params --$p --bazinga
     assert_output --regexp "$p requires.*argument"
     assert_failure
@@ -77,7 +74,7 @@ EOF
   source "$script_to_test"
   declare_globals
 
-  main --conf $conffile
+  main --conf "$conffile"
   assert_equal "${conf[address]}" "example.com"
   assert_equal "${conf[conffile]}" "$conffile"
   assert_equal "${conf[hcpingkey]}" "cK2UthisisnotyoursZfhg"
@@ -97,22 +94,17 @@ function cmdline_options_override_configfile_allparams() { #@test
     13:$tmpdir
   )
 EOF
-#  min_sizeGB=13
-#  diskpath=$tmpdir
   mock_externals
   source "$script_to_test"
   declare_globals
 
   main --address example.com --conf "$conffile" --hcpingkey a1 --hcslug slug --diskcheckGB 42:/srv
-   #--diskpath /srv --min_sizeGB 42
 
   assert_equal "${conf[address]}" "example.com"
   assert_equal "${conf[conffile]}" "$conffile"
   assert_equal "${conf[hcpingkey]}" "a1"
   assert_equal "${conf[hcslug]}" "slug"
   assert_equal "${conf_diskcheck[/srv]}" "42"
-#  assert_equal "${conf[diskpath]}" "/srv"
-#  assert_equal "${conf[min_sizeGB]}" "42"
 }
 
 function cmdline_options_and_configfile_mixed() { #@test

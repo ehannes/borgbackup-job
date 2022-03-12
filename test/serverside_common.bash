@@ -10,6 +10,7 @@ setup() {
   templogdir="$(temp_make)"
   # shellcheck disable=SC2034 # "appears unused": used in tests
   script_to_test=borg_serverside_checks
+  # shellcheck disable=SC2034
   LOGDIR="$templogdir"
 }
 
@@ -17,7 +18,7 @@ function teardown() {
   if [[ $tmpdir ]]; then
     temp_del "$tmpdir"
   fi
-  temp_del $templogdir
+  temp_del "$templogdir"
 }
 
 ### mocks

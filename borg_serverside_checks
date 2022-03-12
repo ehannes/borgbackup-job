@@ -144,13 +144,14 @@ source_conf_file() {
   done
   # shellcheck disable=SC1090
   source "$filename" || abort
-  #  fi
 
   local conffile_options
   for p in $parameterlist; do
     if [[ ${!p} ]]; then
       if [[ $p == "diskcheckGB" && ! ${conf_diskcheck[*]}  ]]; then # don't use conffile if already on cmdline
+        # shellcheck disable=SC2154 # "var is referenced but not assigned"
         for diskcheck in "${diskcheckGB[@]}"; do
+          # shellcheck disable=SC2089 # "Quotes/backslashes will be treated literally"
           conffile_options="$conffile_options --diskcheckGB \"$diskcheck\""
         done
       else
@@ -159,7 +160,8 @@ source_conf_file() {
     fi
   done
   if [[ $conffile_options ]]; then
-    # shellcheck disable=SC2086 # "double quote to prevent word split" (we want word splitting here)
+    # shellcheck disable=SC2086 # "Double quote to prevent globbing and word splitting", we want word splitting here
+    # shellcheck disable=SC2090 # "Quotes/backslashes in this variable will not be respected", but eval does in parse_params
     parse_params $conffile_options
   fi
 }
@@ -175,17 +177,17 @@ init() {
     abort "$(show_help)"
   fi
 
-  # shellcheck disable=SC2086 # double quote to prevent globbing
+  # initialize config variables that can be set sourced from config file
+  unset address diskcheckGB logdir
+  unset hcpingkey hcslug
+
+  # shellcheck disable=SC2086 # "Double quote to prevent globbing and word splitting", we want word splitting here
   parse_params $options
   if [[ ${conf[conffile]} ]]; then
     source_conf_file "${conf[conffile]}"
   fi
 
-  for required_param in address; do
-    if [[ -z ${conf[$required_param]} ]]; then
-      abort "Required parameter missing: ${required_param}\n$short_usage"
-    fi
-  done
+  [[ -z ${conf[address]} ]] && abort "Required parameter missing: address\n$short_usage"
   [[ ${conf[hcpingkey]} ]]  && export HEALTHCHECKS_PINGKEY="${conf[hcpingkey]}"
   [[ ${conf[hcslug]} ]]  && export HEALTHCHECKS_SLUG="${conf[hcslug]}"
 }
@@ -302,7 +304,7 @@ check_server_internal_health() {
 
 get_public_ip() {
   the_ip=$(host myip.opendns.com. resolver4.opendns.com | filter_hostip)
-  do_check "is_ipv4regexp $the_ip" "get external (internet) ip address."
+  do_check "is_ipv4regexp $the_ip" "get external (internet) ip address"
 
   ret="$the_ip"
 }

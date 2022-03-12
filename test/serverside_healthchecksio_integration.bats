@@ -9,7 +9,7 @@ function mock_curlmock_save_curldata() {
   curlmock="$(mock_create)"
   function check_curl_params() {
       while [[ $1 ]]; do
-        [[ $1 == --data-raw ]] && { echo "$2" > $BATS_RUN_TMPDIR/curldata;shift; }
+        [[ $1 == --data-raw ]] && { echo "$2" > "$BATS_RUN_TMPDIR"/curldata;shift; }
         shift
       done
   }
@@ -92,11 +92,11 @@ function log_is_included_in_healthcheck_report() { #@test
   # shellcheck disable=SC2034 # "variable appears unused"
   HEALTHCHECKS_PINGKEY=123 HEALTHCHECKS_SLUG=batstestcase
 
-  register_result $ok "something worked"
+  register_result "$ok" "something worked"
   healthcheck_report success
 
-  assert_equal "$(mock_get_call_num $curlmock)" 1
+  assert_equal "$(mock_get_call_num "$curlmock")" 1
   # shellcheck disable=SC2034
-  output="$(cat $BATS_RUN_TMPDIR/curldata)"
+  output="$(cat "$BATS_RUN_TMPDIR"/curldata)"
   assert_output -p "something worked"
 }
