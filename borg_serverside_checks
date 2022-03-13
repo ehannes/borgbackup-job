@@ -1,5 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC2155 # "Declare and assign separately..." (stupid rule for 'local')
+# shellcheck disable=SC2155
+#   "Declare and assign separately..." (stupid rule for 'local')
 
 PS4='+(${LINENO}) ' # add linenumbers to the trace when run with 'bash -x'
 NAME=$(basename "$0")
@@ -139,7 +140,8 @@ source_conf_file() {
   local filename=$(get_conf_file_name "$unqualified_name")
 
   for p in $parameterlist; do
-    # shellcheck disable=SC2086 # "double quote to prevent globbing"
+    # shellcheck disable=SC2086
+    #   "double quote to prevent globbing"
     unset ${!p}
   done
   # shellcheck disable=SC1090
@@ -149,9 +151,11 @@ source_conf_file() {
   for p in $parameterlist; do
     if [[ ${!p} ]]; then
       if [[ $p == "diskcheckGB" && ! ${conf_diskcheck[*]}  ]]; then # don't use conffile if already on cmdline
-        # shellcheck disable=SC2154 # "var is referenced but not assigned"
+        # shellcheck disable=SC2154
+        #   "var is referenced but not assigned"
         for diskcheck in "${diskcheckGB[@]}"; do
-          # shellcheck disable=SC2089 # "Quotes/backslashes will be treated literally"
+          # shellcheck disable=SC2089
+          #   "Quotes/backslashes will be treated literally"
           conffile_options="$conffile_options --diskcheckGB \"$diskcheck\""
         done
       else
@@ -160,8 +164,9 @@ source_conf_file() {
     fi
   done
   if [[ $conffile_options ]]; then
-    # shellcheck disable=SC2086 # "Double quote to prevent globbing and word splitting", we want word splitting here
-    # shellcheck disable=SC2090 # "Quotes/backslashes in this variable will not be respected", but eval does in parse_params
+    # shellcheck disable=SC2086 disable=SC2090
+    #   "Double quote to prevent globbing and word splitting", we want word splitting here
+    #   "Quotes/backslashes in this variable will not be respected", but eval does in parse_params
     parse_params $conffile_options
   fi
 }
@@ -181,7 +186,8 @@ init() {
   unset address diskcheckGB logdir
   unset hcpingkey hcslug
 
-  # shellcheck disable=SC2086 # "Double quote to prevent globbing and word splitting", we want word splitting here
+  # shellcheck disable=SC2086
+  #   "Double quote to prevent globbing and word splitting", we want word splitting here
   parse_params $options
   if [[ ${conf[conffile]} ]]; then
     source_conf_file "${conf[conffile]}"
