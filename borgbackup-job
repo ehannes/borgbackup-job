@@ -160,6 +160,30 @@ init() {
   fi
 }
 
+add_timestamp() {
+  # adds timestamp to each line. To be called from a subprocess, since it never returns
+  IFS=  # preserve leading/trailing whitespace in read
+  while read -r line; do
+    printf -v now "%(%F_%T)T" -1
+    printf "%s %s\n" "$now" "$line"
+  done
+}
+
+setup_logging() {
+  local logdir logname
+  logdir=${LOGDIR:-"/var/log/borgbackup"}
+  logname=${envfile%%.env}."$(date +%d)".log
+  declare -g logfile="$logdir/$logname"
+
+  mkdir -p "$logdir" || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
+  oldfile="$(find "$logdir" -name "$logname" ! -newermt 'now - 1day')"
+  [[ -f "$oldfile" ]] && rm "$oldfile"
+  touch "$logfile" || abort "unable to create file $logfile"
+
+  info "Logging to file $logfile"
+  exec > >(tee >(add_timestamp >> "$logfile")) 2>&1
+}
+
 run_hooks() {
   local hooks_to_run=("$@")
   for hook in "${hooks_to_run[@]}"; do
@@ -182,10 +206,12 @@ healthcheck_report() {
         curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/start
         ;;
       success)
-        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+        logdata="$(echo "(Full log available in $logfile)"; tail -60 "$logfile")"
+        curl -m 10 --retry 5 --data-raw "$logdata" https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
         ;;
       fail)
-        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/fail
+        logdata="$(echo "(Full log available in $logfile)"; tail -60 "$logfile")"
+        curl -m 10 --retry 5 --data-raw "$logdata" https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/fail
         ;;
     esac
   fi
@@ -193,7 +219,7 @@ healthcheck_report() {
 
 ## main
 init "$@"
-
+setup_logging
 info "$NAME starting ${dry_run:+"dry-run"}"
 
 # use trap: in case 'borg create' fails we still want to restore system to production mode
