@@ -38,7 +38,7 @@ DEFAULT_CONFDIR="${HOME}/.borgbackup"
 info() {
   # print timestamped info on stderr
   if [[ -n $1 ]]; then
-    printf "%(%F_%T)T %s\n" -1 "$*" >&2
+    echo -e "$*" >&2
   fi
 }
 die() {
@@ -48,14 +48,7 @@ die() {
   info "$*"
   exit "$exitcode"
 }
-abort() {
-  # exits with exit code 2 and message on stderr, without timestamp
-  # for user messages on commandline, i.e. at startup failure, where timestamp is ugly
-  if [[ -n $1 ]]; then
-    echo -e "$*" >&2
-  fi
-  exit 2
-}
+
 warning_or_error() {
   # borg exit code = 1 is warning, others are error.
   # This translates the code to text used in message to user
@@ -75,7 +68,7 @@ source_conf_file() {
       filename="${DEFAULT_CONFDIR}"/"${filename}"
     fi
     # shellcheck disable=SC1090
-    source "$filename" || abort
+    source "$filename" || die 2
   fi
 }
 
@@ -84,7 +77,7 @@ init() {
   options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:,envfile:" -- "e:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
-    abort "$(show_help)"
+    die 2 "$(show_help)"
   fi
 
   # Sets double dashes, which marks end of getopt parameters
@@ -96,12 +89,12 @@ init() {
   while true; do
     case $1 in
       --envfile|-e)
-        [[ ${2:0:1} != '-' ]] || abort "$1 requires a filename argument"
+        [[ ${2:0:1} != '-' ]] || die 2 "$1 requires a filename argument"
         envfile="$2"
         shift 2
         ;;
       --exclude)
-        [[ ${2:0:1} != '-' ]] || abort "$1 requires an argument"
+        [[ ${2:0:1} != '-' ]] || die 2 "$1 requires an argument"
         excludes_on_cmdline+=("$2")
         shift 2
         ;;
@@ -120,8 +113,8 @@ init() {
     esac
   done
 
-  [[ -z ${envfile} ]] && abort "--envfile (or -e) needed (try \"$NAME --help\")\n$short_usage"
-  [[ -r ${envfile} ]] || abort "envfile \"$envfile\" is not readable\n$short_usage"
+  [[ -z ${envfile} ]] && die 2 "--envfile (or -e) needed (try \"$NAME --help\")\n$short_usage"
+  [[ -r ${envfile} ]] || die 2 "envfile \"$envfile\" is not readable\n$short_usage"
 
   local -a paths_on_cmdline=("$@")
   set --
@@ -145,7 +138,7 @@ init() {
   if [[ ${#paths_on_cmdline[*]} -gt 0 ]]; then
     PATHS_TO_BACKUP=("${paths_on_cmdline[@]}")
   fi
-  [[ ${#PATHS_TO_BACKUP[*]} -eq 0 ]] && abort "invalid usage: nothing to backup (no files specified, and environment PATHS_TO_BACKUP is not set)"
+  [[ ${#PATHS_TO_BACKUP[*]} -eq 0 ]] && die 2 "invalid usage: nothing to backup (no files specified, and environment PATHS_TO_BACKUP is not set)"
 
   # EXCLUDE comes from $envfile, but patterns on command line overrides (does NOT add to what's in $envfile)
   EXCL=""
@@ -178,7 +171,7 @@ setup_logging() {
   mkdir -p "$logdir" || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
   oldfile="$(find "$logdir" -name "$logname" ! -newermt 'now - 1day')"
   [[ -f "$oldfile" ]] && rm "$oldfile"
-  touch "$logfile" || abort "unable to create file $logfile"
+  touch "$logfile" || die 2 "unable to create file $logfile"
 
   info "Logging to file $logfile"
   exec > >(tee >(add_timestamp >> "$logfile")) 2>&1
@@ -191,43 +184,65 @@ run_hooks() {
       if [[ $dry_run ]]; then
         info "Would run $hook hook"
       else
-        info "Running $hook hook"
+        info "Running $hook hook:"
         $hook
       fi
     fi
   done
 }
 
+data_to_send_to_healthcheck() {
+  declare -g logfile
+  declare -i maxloglines=60
+  local logdata="(Full log available in $logfile)"$'\n'
+  local logstart filelines
+  read -r logstart filelines < <(awk -v logstart=1 "/$start_message/"'{logstart=NR}END{print logstart " " NR}' <"$logfile")
+  (( filelines - logstart < maxloglines )) || logstart=$(( filelines - maxloglines ))
+  logdata="$logdata""$(tail -n +$logstart "$logfile")"
+  echo "$logdata"
+}
 healthcheck_report() {
   report_type=$1
   if [[ -n "$HEALTHCHECKS_PINGKEY" ]] && [[ -n "$HEALTHCHECKS_SLUG" ]]; then
+    SLUGURL=https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+    info "Reporting $report_type to healthchecks.io:"
     case $report_type in
       start)
-        curl -m 10 --retry 5 https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/start
+        curl --silent --show-error --max-time 10 --retry 5 "$SLUGURL"/start
         ;;
       success)
-        logdata="$(echo "(Full log available in $logfile)"; tail -60 "$logfile")"
-        curl -m 10 --retry 5 --data-raw "$logdata" https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"
+        logdata="$(data_to_send_to_healthcheck)"
+        curl --silent --show-error --max-time 10 --retry 5 --data-raw "$logdata" "$SLUGURL"
         ;;
       fail)
-        logdata="$(echo "(Full log available in $logfile)"; tail -60 "$logfile")"
-        curl -m 10 --retry 5 --data-raw "$logdata" https://hc-ping.com/"${HEALTHCHECKS_PINGKEY}/${HEALTHCHECKS_SLUG}"/fail
+        logdata="$(data_to_send_to_healthcheck)"
+        curl --silent --show-error --max-time 10 --retry 5 --data-raw "$logdata" "$SLUGURL"/fail
         ;;
     esac
+    curl_ret=$?
+    if ((curl_ret > 0)); then
+      info "Reporting \"$report_type\" to healthchecks.io failed (curl returncode=$curl_ret)"
+    else
+      info " "  # hc-ping.com prints "OK" without "\n" at success.
+    fi
+  else
+    info "hc-ping.com reporting is not enabled, not reporting $report_type"
   fi
 }
 
 ## main
 init "$@"
 setup_logging
-info "$NAME starting ${dry_run:+"dry-run"}"
+start_message="$NAME starting ${dry_run:+"dry-run"}"
+info "$start_message"
 
-# use trap: in case 'borg create' fails we still want to restore system to production mode
-trap 'run_hooks post_backup ; info "$NAME ending"' EXIT
 
 healthcheck_report start
 
+# use trap: in case the pre_backup hook fails/crashes we should try to restore system to production mode
+trap 'run_hooks post_backup ; info "$NAME ending after failure"' EXIT
 run_hooks pre_backup
+trap - EXIT
 
 if [[ $dry_run ]]; then
   borg() {
@@ -235,6 +250,7 @@ if [[ $dry_run ]]; then
   }
 fi
 
+info "Running borg create:\n"
 # shellcheck disable=SC2086
 borg create \
   --stats \
@@ -244,24 +260,37 @@ borg create \
   --list \
   $EXCL \
   ::'{now:%Y-%m-%dT%H:%M:%S}' \
-  "${PATHS_TO_BACKUP[@]}" ||
-  {
-    healthcheck_report fail
-    die $? "borg create ended with $(warning_or_error $?). Not pruning repository" ;
-  }
+  "${PATHS_TO_BACKUP[@]}"
 
-info "Pruning repository"
+borg_result=$?
+if (( borg_result > 0 ));then
+  info "borg create ended with $(warning_or_error $borg_result) ($borg_result). Not pruning repository"
+else
+  info "\nPruning repository:"
+  borg prune \
+    --list \
+    --show-rc \
+    --keep-daily "${KEEP_DAILY:-14}" \
+    --keep-weekly "${KEEP_WEEKLY:-4}" \
+    --keep-monthly "${KEEP_MONTHLY:-12}" \
+    --keep-yearly "${KEEP_YEARLY:-5}"
 
-borg prune \
-  --list \
-  --show-rc \
-  --keep-daily "${KEEP_DAILY:-14}" \
-  --keep-weekly "${KEEP_WEEKLY:-4}" \
-  --keep-monthly "${KEEP_MONTHLY:-12}" \
-  --keep-yearly "${KEEP_YEARLY:-5}" ||
-  {
-    healthcheck_report fail
-    die $? "borg prune ended with $(warning_or_error $?)."
-  }
+  borg_result=$?
 
-healthcheck_report success
+  if (( borg_result > 0 ));then
+    info "borg prune ended with $(warning_or_error $borg_result) ($borg_result)."
+  fi
+fi
+info " "
+
+run_hooks post_backup
+hook_result=$?
+if (( hook_result > 0 ));then
+  info "post_backup failed with exit code $hook_result"
+fi
+if (( hook_result > 0 || borg_result > 0 )); then
+  healthcheck_report fail
+else
+  healthcheck_report success
+fi
+info "\n$NAME ending"
