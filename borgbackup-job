@@ -59,7 +59,7 @@ warning_or_error() {
 }
 trap 'die 2 "Backup interrupted"' INT TERM
 
-source_conf_file() {
+expand_filename_to_source() {
   local unqualified_name="$1"
   local filename
   if [[ -n $unqualified_name ]]; then
@@ -67,9 +67,15 @@ source_conf_file() {
     if [[ ${filename:0:1} != '/' ]]; then
       filename="${DEFAULT_CONFDIR}"/"${filename}"
     fi
-    # shellcheck disable=SC1090
-    source "$filename" || die 2
   fi
+  echo "$filename"
+}
+
+source_conf_file() {
+  filename=$(expand_filename_to_source "$1")
+  [[ -z "$filename" ]] && return  # Can happen if there are no HOOKS
+  # shellcheck disable=SC1090
+  source "$filename" || die 21 "aborting after failed sourcing of $filename"
 }
 
 init() {
@@ -114,7 +120,8 @@ init() {
   done
 
   [[ -z ${envfile} ]] && die 2 "--envfile (or -e) needed (try \"$NAME --help\")\n$short_usage"
-  [[ -r ${envfile} ]] || die 2 "envfile \"$envfile\" is not readable\n$short_usage"
+  [[ -e "$(expand_filename_to_source "${envfile}")" ]] || die 2 "envfile \"$envfile\" is not found\n$short_usage"
+  [[ -r "$(expand_filename_to_source "${envfile}")" ]] || die 2 "envfile \"$envfile\" is not readable\n$short_usage"
 
   local -a paths_on_cmdline=("$@")
   set --
