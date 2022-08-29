@@ -72,3 +72,11 @@ The script takes one argument, which can be many: a list of space separated path
 ```
 $ borgbackup-job /path/to/dir1 /path/to/dir2
 ```
+
+### Updating
+Update the source code and checkout the newest tag release:
+```
+git fetch origin
+git tag
+git checkout vX.Y.Z
+```
