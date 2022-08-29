@@ -6,8 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 ### Added
-- borg_serverside_checks, send reports to healtchecks.io about server health
-- borgbackup-job now writes log file to disk
+- `borg_serverside_checks`, send reports to healtchecks.io about server health
+- `borgbackup-job` now writes log file to disk
+- `borgbackup-job` now sends part of log to healthchecks.io
 
 ## [4.0.0]
 ### Added
