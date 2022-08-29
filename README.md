@@ -74,9 +74,13 @@ $ borgbackup-job /path/to/dir1 /path/to/dir2
 ```
 
 ### Updating
+Verify which version you are currently running with `git describe --tags`.
+
 Update the source code and checkout the newest tag release:
 ```
 git fetch origin
 git tag
 git checkout vX.Y.Z
 ```
+
+Then checkout the [changelog](CHANGELOG.md) to see if you need to do some adjustments.
