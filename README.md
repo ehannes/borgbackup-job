@@ -6,8 +6,6 @@ It is intended to be used from other scripts which provides the paths to backup.
 Often, you also need to do other things when creating a backup,
 like stopping serices and such.
 
-The script is originally from an example from borg [quickstart documentation](https://borgbackup.readthedocs.io/en/stable/quickstart.html).
-
 In borg, you can divide your backups into repositories. You can for instance have one
 backup per machine, or one backup per service. That's up to you. This script provides the
 shared parts for these backup scripts. You need to provide the actual paths to backup
@@ -18,7 +16,7 @@ My setup looks something like this:
 ```
              Service A               Service B
                    \                   /
-  Cron job for service A           Cron job for Service B
+  Cron job for Service A           Cron job for Service B
                      \               /
       Service A backup job       Service B backup job
                        \          /
@@ -26,10 +24,12 @@ My setup looks something like this:
 ```
 
 ## Getting started
-Start with installing borg itself. If you are using `apt`, simple run `sudo apt install borgbackup`.
+Start with installing borg itself. If you are using `apt`, simple run `# apt install borgbackup`.
 
 ### setup.sh
-This script helps you setup borgbackup-job. It has a generic part and a part for configuring a remote host. Please review it first since it might do stuff that you don't want. If you want to configure it differently, just pick the pieces that fits your setup.
+This script helps you setup borgbackup-job. It has a generic part and a part for configuring a remote host.
+Please review it first since it might do stuff that you don't want.
+If you want to configure it differently, just pick the pieces that fits your setup.
 
 Prerequisites:
 - Read the [borg documentation](https://borgbackup.readthedocs.io/en/stable/index.html). It's important that you understand how it works since it's your backup solution.
@@ -38,7 +38,7 @@ Prerequisites:
 - Clone this repo to the client host so you have the script available there
 - A user on the client machine that has read access to the files you want to backup
 
-To be able to call this script from another script, it's convinient to place the script in system PATH. The script will help you do that.
+To be able to call `borgbackup-job` from another script, it's convinient to place the script in system PATH. The script will help you do that.
 
 #### Configure a remote host
 The setup script can help you setup a remote host.
