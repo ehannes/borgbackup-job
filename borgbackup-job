@@ -41,6 +41,7 @@ info() {
     echo -e "$*" >&2
   fi
 }
+
 die() {
   # exit with indicated exit code and message on stderr
   local exitcode=$1
@@ -208,6 +209,7 @@ data_to_send_to_healthcheck() {
   logdata="$logdata""$(tail -n +$logstart "$logfile")"
   echo "$logdata"
 }
+
 healthcheck_report() {
   report_type=$1
   if [[ -n "$HEALTHCHECKS_PINGKEY" ]] && [[ -n "$HEALTHCHECKS_SLUG" ]]; then
