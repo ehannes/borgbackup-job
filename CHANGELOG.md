@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [4.1.1]
+### Fixed
+- when `--envfile` was given with a path, `borgbackup-job` failed in `setup_logging`
+
 ## [4.1.0]
 ### Added
 - `borg_serverside_checks`, send reports to healtchecks.io about server health
@@ -55,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Setup script now installs the job in `/usr/local/bin` instead of `/usr/bin`
 
+[4.1.1]: https://github.com/ehannes/borgbackup-job/compare/v4.1.0...v4.1.1
 [4.1.0]: https://github.com/ehannes/borgbackup-job/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/ehannes/borgbackup-job/compare/v3.0.1...v4.0.0
 [3.0.1]: https://github.com/ehannes/borgbackup-job/compare/v3.0.0...v3.0.1
