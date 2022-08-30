@@ -173,7 +173,7 @@ add_timestamp() {
 setup_logging() {
   local logdir logname envfile_nopath
   logdir=${LOGDIR:-"/var/log/borgbackup"}
-  envfile_nopath=$(basename $envfile)
+  envfile_nopath=$(basename "$envfile")
   logname=${envfile_nopath%%.env}."$(date +%d)".log
   declare -g logfile="$logdir/$logname"
 
