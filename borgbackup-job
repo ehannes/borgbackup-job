@@ -171,9 +171,10 @@ add_timestamp() {
 }
 
 setup_logging() {
-  local logdir logname
+  local logdir logname envfile_nopath
   logdir=${LOGDIR:-"/var/log/borgbackup"}
-  logname=${envfile%%.env}."$(date +%d)".log
+  envfile_nopath=$(basename $envfile)
+  logname=${envfile_nopath%%.env}."$(date +%d)".log
   declare -g logfile="$logdir/$logname"
 
   mkdir -p "$logdir" || die 1 "unable to create logdir=$logdir" # don't accidentally delete files in next lines
