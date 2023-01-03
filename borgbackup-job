@@ -33,6 +33,8 @@ EOM
 }
 
 DEFAULT_CONFDIR="${HOME}/.borgbackup"
+MAX_RETRY_COUNT=10
+RETRY_DELAY_HOURS=2
 
 # Some helpers and error handling
 info() {
@@ -81,7 +83,8 @@ source_conf_file() {
 
 init() {
   local options
-  options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:,envfile:" -- "e:" "$@")
+  declare -g orig_options="$*"
+  options=$(getopt --name "$NAME" --longoptions "help,dry-run,exclude:,envfile:,_rerun:" -- "e:" "$@")
   # shellcheck disable=SC2181
   if [[ $? -ne 0 ]]; then # Problem with getting options?
     die 2 "$(show_help)"
@@ -108,6 +111,11 @@ init() {
       --dry-run)
         dry_run="true"
         shift
+        ;;
+      --_rerun)
+        [[ ${2:0:1} != '-' ]] || die 2 "$1 requires an argument"
+        rerun_counter="$2"
+        shift 2
         ;;
       --help)
         show_help
@@ -243,7 +251,7 @@ healthcheck_report() {
 ## main
 init "$@"
 setup_logging
-start_message="$NAME starting ${dry_run:+"dry-run"}"
+start_message="$NAME starting${dry_run:+" dry-run"}${rerun_counter:+" (rerun $rerun_counter)"}"
 info "$start_message"
 
 
@@ -274,7 +282,17 @@ borg create \
 
 borg_result=$?
 if (( borg_result > 0 ));then
-  info "borg create ended with $(warning_or_error $borg_result) ($borg_result). Not pruning repository"
+  (( rerun_counter = rerun_counter + 1 ))
+  if (( rerun_counter <= MAX_RETRY_COUNT ));then
+    info "borg create ended with $(warning_or_error $borg_result) ($borg_result). Scheduling rerun in $RETRY_DELAY_HOURS hours"
+    rerun_options="$(sed -Ee 's/--_rerun ..?//' <<< $orig_options) --_rerun $rerun_counter"
+    echo "$0 $rerun_options" | at "now + $RETRY_DELAY_HOURS hours"
+  else
+    if  (( rerun_counter != 1 ));then
+      rerun_msg=" Max retry attempts ($MAX_RETRY_COUNT) have failed. Not retrying."
+    fi
+    info "borg create ended with $(warning_or_error $borg_result) ($borg_result).$rerun_msg Not pruning repository"
+  fi
 else
   info "\nPruning repository:"
   borg prune \
