@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 ### Added
 - Retry backup if failed. New parameters in .env file: MAX_RETRY_COUNT and RETRY_DELAY_HOURS
+- Locking to prevent parallel running of same backup
 
 ## [4.1.1]
 ### Fixed
