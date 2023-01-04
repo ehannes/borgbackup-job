@@ -169,6 +169,16 @@ init() {
   fi
 }
 
+take_lock_or_die() {
+  lockfile="$(expand_filename_to_source "$envfile")"
+  exec {lockfd}<"$lockfile"
+  if flock --exclusive --nonblock $lockfd; then
+    :
+  else
+    die 1 "Backup already running. Exiting"
+  fi
+}
+
 add_timestamp() {
   # adds timestamp to each line. To be called from a subprocess, since it never returns
   IFS=  # preserve leading/trailing whitespace in read
@@ -250,6 +260,7 @@ healthcheck_report() {
 
 ## main
 init "$@"
+take_lock_or_die
 setup_logging
 start_message="$NAME starting${dry_run:+" dry-run"}${rerun_counter:+" (rerun $rerun_counter)"}"
 info "$start_message"
@@ -285,7 +296,7 @@ if (( borg_result > 0 ));then
   (( rerun_counter = rerun_counter + 1 ))
   if (( rerun_counter <= MAX_RETRY_COUNT ));then
     info "borg create ended with $(warning_or_error $borg_result) ($borg_result). Scheduling rerun in $RETRY_DELAY_HOURS hours"
-    rerun_options="$(sed -Ee 's/--_rerun ..?//' <<< $orig_options) --_rerun $rerun_counter"
+    rerun_options="$(sed -Ee 's/--_rerun ..?//' <<< "$orig_options") --_rerun $rerun_counter"
     echo "$0 $rerun_options" | at "now + $RETRY_DELAY_HOURS hours"
   else
     if  (( rerun_counter != 1 ));then
