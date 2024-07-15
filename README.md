@@ -1,30 +1,17 @@
 # borgbackup-job
-A generic job for backing up your data with [Borg](https://borgbackup.readthedocs.io/en/stable/).
+A wrapper around [Borg](https://borgbackup.readthedocs.io/en/stable/) to facilitate
+setting up backup jobs.
 
-This generic script runs the actual borg commands to create a backup.
-It is intended to be used from other scripts which provides the paths to backup.
-Often, you also need to do other things when creating a backup,
-like stopping serices and such.
-
-In borg, you can divide your backups into repositories. You can for instance have one
-backup per machine, or one backup per service. That's up to you. This script provides the
-shared parts for these backup scripts. You need to provide the actual paths to backup
-to this script.
-
-My setup looks something like this:
-
-```
-             Service A               Service B
-                   \                   /
-  Cron job for Service A           Cron job for Service B
-                     \               /
-      Service A backup job       Service B backup job
-                       \          /
-                      borgbackup-job
-```
+## Features
+- Setup script to help you configure a backup job
+- Shared configurations between backup jobs with environment files
+- Run pre hooks before backup
+- Run post hooks after backup
+- Borg server side checks
+- Report backup status to healthchecks.io
 
 ## Getting started
-Start with installing borg itself. If you are using `apt`, simple run `# apt install borgbackup`.
+Start with installing borg itself. If you are using `apt`, simply run `# apt install borgbackup`.
 
 ### setup.sh
 This script helps you setup borgbackup-job. It has a generic part and a part for configuring a remote host.
@@ -67,11 +54,7 @@ The user on the client machine that runs the backup job obviously needs access t
 The following two are required: `BORG_REPO`, `BORG_PASSPHRASE`.
 
 ### Arguments
-The script takes one argument, which can be many: a list of space separated paths that should be backed up. Like this:
-
-```
-$ borgbackup-job /path/to/dir1 /path/to/dir2
-```
+See `borgbackup-job --help` for more information.
 
 ### Updating
 Verify which version you are currently running with `git describe --tags`.
