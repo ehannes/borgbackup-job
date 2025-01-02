@@ -357,6 +357,8 @@ main() {
   init "$@"
   local ret # function return variable
 
+  register_result "$(date "+%F %T")" "$NAME starting at"
+
   setup_logging "${conf[logdir]}"
 
   healthcheck_report start
